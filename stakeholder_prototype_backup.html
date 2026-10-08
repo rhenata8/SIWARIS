@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIWARIS - Kelurahan Sumbertaman</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#243447}
+.app{display:flex;min-height:100vh}.sidebar{width:245px;background:#0b4f71;color:#fff;padding:22px 15px;position:fixed;inset:0 auto 0 0}
+.brand{font-size:22px;font-weight:700;margin:4px 10px}.brand small{display:block;font-size:11px;font-weight:400;opacity:.8;margin-top:5px}
+nav{margin-top:30px}nav button{display:block;width:100%;border:0;background:transparent;color:#e9f4fa;text-align:left;padding:13px 14px;border-radius:9px;margin:5px 0;cursor:pointer;font-size:14px}nav button:hover,nav button.active{background:#176b91;color:#fff}
+.main{margin-left:245px;width:calc(100% - 245px);padding:25px 30px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.top h1{margin:0;font-size:25px}.user{background:#fff;padding:9px 13px;border-radius:9px;box-shadow:0 2px 10px #dbe3eb;font-size:13px}
+.page{display:none}.page.active{display:block}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{background:#fff;padding:20px;border-radius:13px;box-shadow:0 2px 10px #dfe7ef}.card .num{font-size:28px;font-weight:700;margin:8px 0}.muted{color:#718096;font-size:13px}
+.panel{background:#fff;border-radius:13px;padding:20px;margin-top:18px;box-shadow:0 2px 10px #dfe7ef}.panel h3{margin-top:0}
+.search{display:flex;gap:10px}.search input,.form input,.form select,.form textarea{width:100%;padding:11px;border:1px solid #d5dee8;border-radius:8px}.btn{border:0;border-radius:8px;padding:10px 15px;cursor:pointer;font-weight:600}.primary{background:#0b6f9e;color:#fff}.secondary{background:#e9f1f6;color:#21445a}.danger{background:#c83c3c;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:15px}th,td{padding:11px;border-bottom:1px solid #edf1f5;text-align:left;font-size:13px}th{background:#f6f9fc}.badge{padding:5px 8px;border-radius:20px;background:#dff4e8;color:#187244;font-size:11px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}.form{display:grid;gap:12px}.form label{font-size:12px;font-weight:700}.actions{display:flex;gap:8px;margin-top:10px}
+.notice{padding:13px;border-radius:9px;background:#eef7fc;border-left:4px solid #0b6f9e;margin-bottom:15px}
+.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modalbox{background:#fff;border-radius:13px;width:min(760px,100%);max-height:90vh;overflow:auto;padding:22px}
+.qr{width:130px;height:130px;border:8px solid #111;display:grid;grid-template-columns:repeat(8,1fr);gap:3px;padding:6px;margin:10px auto}.qr i{background:#111}.qr i:nth-child(3n){background:#fff}
+footer{margin-top:25px;color:#8a98a8;font-size:12px}
+@media(max-width:900px){.sidebar{width:190px}.main{margin-left:190px;width:calc(100% - 190px)}.cards{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">🏛️ SIWARIS<small>Sistem Informasi Arsip Surat Keterangan Waris</small></div>
+  <nav>
+    <button class="active" data-page="dashboard">🏠 Dashboard</button>
+    <button data-page="surat">📄 Data Surat Waris</button>
+    <button data-page="pewaris">👤 Pewaris & Ahli Waris</button>
+    <button data-page="arsip">📁 Arsip Digital</button>
+    <button data-page="pencarian">🔎 Pencarian Arsip</button>
+    <button data-page="laporan">📊 Laporan</button>
+    <button data-page="pengguna">⚙️ Pengguna</button>
+  </nav>
+</aside>
+
+<main class="main">
+<div class="top"><h1 id="title">Dashboard</h1><div class="user">👤 Operator Kelurahan Sumbertaman</div></div>
+
+<section id="dashboard" class="page active">
+ <div class="cards">
+  <div class="card"><div class="muted">Total SKW</div><div class="num" id="total">128</div><div class="muted">arsip tercatat</div></div>
+  <div class="card"><div class="muted">Pewaris</div><div class="num">128</div><div class="muted">data terdaftar</div></div>
+  <div class="card"><div class="muted">Ahli Waris</div><div class="num">367</div><div class="muted">data terdaftar</div></div>
+  <div class="card"><div class="muted">Tahun 2026</div><div class="num">42</div><div class="muted">SKW diterbitkan</div></div>
+ </div>
+ <div class="panel">
+  <h3>🔎 Pencarian Cepat</h3>
+  <div class="search"><input id="quickSearch" placeholder="Nama pewaris, NIK, atau nomor SKW"><button class="btn primary" onclick="quickSearch()">Cari Arsip</button></div>
+ </div>
+ <div class="panel"><h3>📄 Arsip Terbaru</h3><div id="recent"></div></div>
+</section>
+
+<section id="surat" class="page">
+ <div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center"><h3>Data Surat Keterangan Waris</h3><button class="btn primary" onclick="openModal()">＋ Tambah SKW</button></div>
+  <table><thead><tr><th>ID Arsip</th><th>Nomor SKW</th><th>Pewaris</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tableSurat"></tbody></table>
+ </div>
+</section>
+
+<section id="pewaris" class="page">
+ <div class="panel"><h3>Data Pewaris & Ahli Waris</h3><div class="notice">Data pada prototype ini adalah data contoh/dummy. Jangan memasukkan NIK atau dokumen pribadi nyata ke prototype.</div>
+ <table><thead><tr><th>Nama Pewaris</th><th>Tanggal Meninggal</th><th>Jumlah Ahli Waris</th><th>ID Arsip</th></tr></thead><tbody id="tablePewaris"></tbody></table></div>
+</section>
+
+<section id="arsip" class="page">
+ <div class="panel"><h3>📁 Arsip Digital</h3><div class="notice">Prototype mensimulasikan penyimpanan arsip. Versi produksi dapat dihubungkan ke server/database dan penyimpanan dokumen resmi.</div>
+ <table><thead><tr><th>Dokumen</th><th>ID Arsip</th><th>Jenis</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tableArsip"></tbody></table></div>
+</section>
+
+<section id="pencarian" class="page">
+ <div class="panel"><h3>🔎 Pencarian Arsip</h3><div class="search"><input id="searchInput" placeholder="Ketik nama, nomor SKW, atau ID arsip"><button class="btn primary" onclick="searchArchive()">Cari</button></div><div id="searchResult"></div></div>
+</section>
+
+<section id="laporan" class="page">
+ <div class="panel"><h3>📊 Laporan Arsip</h3>
+  <div class="grid2"><div class="card"><div class="muted">2024</div><div class="num">31</div></div><div class="card"><div class="muted">2025</div><div class="num">55</div></div></div>
+  <div class="card" style="margin-top:15px"><div class="muted">2026</div><div class="num" id="report2026">42</div></div>
+  <div class="actions"><button class="btn primary" onclick="window.print()">🖨️ Cetak Laporan</button><button class="btn secondary" onclick="alert('Prototype: ekspor Excel akan dihubungkan pada versi produksi.')">⬇ Export Excel</button></div>
+ </div>
+</section>
+
+<section id="pengguna" class="page">
+ <div class="panel"><h3>⚙️ Manajemen Pengguna</h3><table><thead><tr><th>Nama</th><th>Username</th><th>Peran</th><th>Status</th></tr></thead>
+ <tbody><tr><td>Operator Kelurahan</td><td>operator</td><td>Operator</td><td><span class="badge">Aktif</span></td></tr><tr><td>Lurah Sumbertaman</td><td>lurah</td><td>Pimpinan</td><td><span class="badge">Aktif</span></td></tr></tbody></table></div>
+</section>
+<footer>Prototype SIWARIS • Kelurahan Sumbertaman • Versi Demo Interaktif</footer>
+</main>
+</div>
+
+<div class="modal" id="modal">
+ <div class="modalbox"><h2>Tambah Surat Keterangan Waris</h2>
+  <div class="form">
+   <label>Nomor SKW<input id="fNomor" placeholder="470/___/SKW/2026"></label>
+   <label>Tanggal Surat<input id="fTanggal" type="date"></label>
+   <label>Nama Pewaris<input id="fNama" placeholder="Nama lengkap"></label>
+   <label>Tanggal Meninggal<input id="fMeninggal" type="date"></label>
+   <label>Jumlah Ahli Waris<input id="fAhli" type="number" min="1" value="1"></label>
+   <label>Upload Scan SKW<input id="fFile" type="file" accept=".pdf,.jpg,.jpeg,.png"></label>
+   <div class="actions"><button class="btn primary" onclick="saveSKW()">💾 Simpan Arsip</button><button class="btn secondary" onclick="closeModal()">Batal</button></div>
+  </div>
+ </div>
+</div>
+
+<script>
+let data=[
+ {id:'SW-SBT-2026-0001',nomor:'470/123/SKW/2026',nama:'Budi Santoso',tanggal:'2026-08-12',meninggal:'2026-07-30',ahli:4},
+ {id:'SW-SBT-2026-0002',nomor:'470/124/SKW/2026',nama:'Siti Aminah',tanggal:'2026-08-18',meninggal:'2026-08-02',ahli:3},
+ {id:'SW-SBT-2026-0003',nomor:'470/125/SKW/2026',nama:'Hadi Wijaya',tanggal:'2026-09-02',meninggal:'2026-08-19',ahli:2}
+];
+
+const titles={dashboard:'Dashboard',surat:'Data Surat Keterangan Waris',pewaris:'Pewaris & Ahli Waris',arsip:'Arsip Digital',pencarian:'Pencarian Arsip',laporan:'Laporan',pengguna:'Manajemen Pengguna'};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));document.getElementById('title').textContent=titles[id];render();}
+function fmt(d){return new Date(d+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function render(){
+ document.getElementById('total').textContent=128+data.length-3;
+ document.getElementById('report2026').textContent=42+data.length-3;
+ document.getElementById('tableSurat').innerHTML=data.map(x=>`<tr><td>${x.id}</td><td>${x.nomor}</td><td>${x.nama}</td><td>${fmt(x.tanggal)}</td><td><span class="badge">Tersimpan</span></td><td><button class="btn secondary" onclick="detail('${x.id}')">Lihat</button></td></tr>`).join('');
+ document.getElementById('tablePewaris').innerHTML=data.map(x=>`<tr><td>${x.nama}</td><td>${fmt(x.meninggal)}</td><td>${x.ahli}</td><td>${x.id}</td></tr>`).join('');
+ document.getElementById('tableArsip').innerHTML=data.map(x=>`<tr><td>📄 Surat Keterangan Waris</td><td>${x.id}</td><td>PDF/Scan</td><td><span class="badge">Tersimpan</span></td><td><button class="btn secondary" onclick="detail('${x.id}')">Buka</button></td></tr>`).join('');
+ document.getElementById('recent').innerHTML=data.slice(-3).reverse().map(x=>`<div style="padding:12px 0;border-bottom:1px solid #eee"><b>${x.nomor}</b> — ${x.nama}<br><span class="muted">${x.id} • ${fmt(x.tanggal)}</span></div>`).join('');
+}
+function openModal(){document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+function saveSKW(){
+ const nama=document.getElementById('fNama').value.trim(), nomor=document.getElementById('fNomor').value.trim(), tanggal=document.getElementById('fTanggal').value, meninggal=document.getElementById('fMeninggal').value, ahli=Number(document.getElementById('fAhli').value||1);
+ if(!nama||!nomor||!tanggal||!meninggal){alert('Mohon lengkapi data utama.');return}
+ const n=String(data.length+1).padStart(4,'0');
+ data.push({id:'SW-SBT-2026-'+n,nomor,nama,tanggal,meninggal,ahli});
+ closeModal(); ['fNama','fNomor','fTanggal','fMeninggal'].forEach(id=>document.getElementById(id).value=''); showPage('surat'); alert('Arsip berhasil ditambahkan ke prototype SIWARIS.');
+}
+function detail(id){
+ const x=data.find(a=>a.id===id); if(!x)return;
+ alert(`DETAIL ARSIP\\n\\nID: ${x.id}\\nNomor SKW: ${x.nomor}\\nPewaris: ${x.nama}\\nTanggal Surat: ${fmt(x.tanggal)}\\nAhli Waris: ${x.ahli} orang\\n\\nPada versi produksi, tombol ini dapat membuka PDF dan QR Code.`);
+}
+function searchArchive(){
+ const q=document.getElementById('searchInput').value.toLowerCase();
+ const r=data.filter(x=>(x.nama+x.nomor+x.id).toLowerCase().includes(q));
+ document.getElementById('searchResult').innerHTML=r.length?r.map(x=>`<div class="panel"><b>${x.nomor}</b><br>${x.nama}<br><span class="muted">${x.id} • ${fmt(x.tanggal)}</span><div class="actions"><button class="btn primary" onclick="detail('${x.id}')">Lihat Detail</button><button class="btn secondary" onclick="alert('Prototype: QR Code verifikasi akan tersedia di versi produksi.')">QR Verifikasi</button></div></div>`).join(''):'<div class="notice" style="margin-top:15px">Arsip tidak ditemukan.</div>';
+}
+function quickSearch(){const q=document.getElementById('quickSearch').value;showPage('pencarian');document.getElementById('searchInput').value=q;searchArchive();}
+render();
+</script>
+</body>
+</html>
