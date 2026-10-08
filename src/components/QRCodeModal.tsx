@@ -1,21 +1,26 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import QRCode from 'qrcode';
-import { X, Download, Check, ShieldCheck, Copy } from 'lucide-react';
+import { X, Download, Check, ShieldCheck, Copy, ExternalLink } from 'lucide-react';
 
 export const QRCodeModal: React.FC = () => {
-  const { qrModalArchive, setQrModalArchive } = useApp();
+  const { qrModalArchive, setQrModalArchive, setPublicVerifyId } = useApp();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [verifyUrl, setVerifyUrl] = useState<string>('');
 
   useEffect(() => {
     if (!qrModalArchive) return;
 
-    const verifyUrl = `https://siwaris.kelurahan-sumbertaman.go.id/validasi?id=${qrModalArchive.idArsip}&no=${encodeURIComponent(qrModalArchive.nomorSKW)}`;
+    // Use current web origin so scanning from mobile opens the real website!
+    // URL format matches the production verification endpoint
+    const baseUrl = window.location.origin;
+    const encodedNo = encodeURIComponent(qrModalArchive.nomorSKW);
+    const url = `${baseUrl}/validasi?id=${qrModalArchive.idArsip}&no=${encodedNo}`;
+    setVerifyUrl(url);
 
     QRCode.toDataURL(
-      verifyUrl,
+      url,
       {
         width: 260,
         margin: 2,
@@ -24,9 +29,9 @@ export const QRCodeModal: React.FC = () => {
           light: '#ffffff',
         },
       },
-      (err, url) => {
-        if (!err && url) {
-          setQrDataUrl(url);
+      (err, dataUri) => {
+        if (!err && dataUri) {
+          setQrDataUrl(dataUri);
         }
       }
     );
@@ -35,8 +40,7 @@ export const QRCodeModal: React.FC = () => {
   if (!qrModalArchive) return null;
 
   const handleCopy = () => {
-    const text = `Verifikasi SKW: ${qrModalArchive.nomorSKW} (${qrModalArchive.idArsip}) - Kelurahan Sumbertaman`;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(verifyUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -47,6 +51,15 @@ export const QRCodeModal: React.FC = () => {
     a.href = qrDataUrl;
     a.download = `QR_Verifikasi_${qrModalArchive.idArsip}.png`;
     a.click();
+  };
+
+  const handleTestVerify = () => {
+    setPublicVerifyId(qrModalArchive.idArsip);
+    setQrModalArchive(null);
+  };
+
+  const handleOpenLink = () => {
+    window.open(verifyUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -68,9 +81,9 @@ export const QRCodeModal: React.FC = () => {
               background: '#f8fafc',
               border: '2px solid #e2e8f0',
               borderRadius: 16,
-              padding: 20,
+              padding: 16,
               display: 'inline-block',
-              margin: '0 auto 16px',
+              margin: '0 auto 14px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
             }}
           >
@@ -78,16 +91,16 @@ export const QRCodeModal: React.FC = () => {
               <img
                 src={qrDataUrl}
                 alt="QR Code Verifikasi"
-                style={{ width: 220, height: 220, display: 'block', margin: '0 auto' }}
+                style={{ width: 210, height: 210, display: 'block', margin: '0 auto' }}
               />
             ) : (
-              <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 210, height: 210, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 Membuat QR Code...
               </div>
             )}
           </div>
 
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
               {qrModalArchive.nomorSKW}
             </div>
@@ -104,24 +117,34 @@ export const QRCodeModal: React.FC = () => {
               background: '#ecfdf5',
               border: '1px solid #a7f3d0',
               borderRadius: 8,
-              padding: '10px 14px',
-              fontSize: 12,
+              padding: '8px 12px',
+              fontSize: 11.5,
               color: '#065f46',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
+              gap: 6,
+              marginBottom: 12,
             }}
           >
-            <ShieldCheck size={16} />
+            <ShieldCheck size={15} />
             <span>Tanda Tangan Digital & Arsip Sah Kelurahan Sumbertaman</span>
           </div>
+
+          <button
+            type="button"
+            className="btn btn-subtle btn-sm"
+            onClick={handleOpenLink}
+            style={{ width: '100%', fontSize: 12 }}
+          >
+            <ExternalLink size={13} /> Buka Tautan Verifikasi
+          </button>
         </div>
 
         <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
           <button className="btn btn-secondary btn-sm" onClick={handleCopy}>
             {copied ? <Check size={14} color="#059669" /> : <Copy size={14} />}
-            {copied ? 'Tersalin' : 'Salin Info'}
+            {copied ? 'Tersalin' : 'Salin Tautan'}
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" onClick={() => setQrModalArchive(null)}>

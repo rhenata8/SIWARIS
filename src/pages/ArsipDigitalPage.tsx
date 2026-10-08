@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, Info, ShieldCheck } from 'lucide-react';
+import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, ShieldCheck } from 'lucide-react';
 
 export const ArsipDigitalPage: React.FC = () => {
   const { archives, setPreviewDocArchive, setQrModalArchive, setIsAddModalOpen } = useApp();
@@ -28,18 +28,6 @@ export const ArsipDigitalPage: React.FC = () => {
           <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
             <CloudUpload size={16} /> Unggah Berkas Baru
           </button>
-        </div>
-
-        {/* Notice box */}
-        <div className="notice-box info">
-          <Info size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <b>Integrasi Cloud Storage & Database Convex:</b>
-            <div style={{ marginTop: 2, fontSize: 12.5 }}>
-              Sistem telah dilengkapi modul Convex File Storage untuk penyimpanan berkas scan asli.
-              Setiap dokumen tersimpan secara aman dengan enkripsi dan tautan verifikasi QR resmi.
-            </div>
-          </div>
         </div>
 
         {/* Table */}

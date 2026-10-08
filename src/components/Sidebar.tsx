@@ -9,20 +9,19 @@ import {
   Search,
   BarChart3,
   Settings,
-  Database,
   Building2,
   PlusCircle,
   X,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenConvexModal: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenConvexModal }) => {
-  const { activePage, setActivePage, archives, isConvexConfigured, setIsAddModalOpen } = useApp();
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const { activePage, setActivePage, archives, setIsAddModalOpen } = useApp();
 
   const navItems: { id: PageId; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -111,20 +110,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenConvexM
         </nav>
 
         <div className="sidebar-footer">
-          <div
-            className="convex-status-pill"
-            onClick={onOpenConvexModal}
-            style={{ cursor: 'pointer' }}
-            title="Klik untuk konfigurasi dan status Convex"
-          >
-            <span className={`status-dot ${isConvexConfigured ? '' : 'warning'}`}></span>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ fontWeight: 600, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Database size={12} />
-                {isConvexConfigured ? 'Convex Cloud' : 'Local Storage Mode'}
-              </div>
-              <div style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {isConvexConfigured ? 'Connected Realtime' : 'Klik untuk hubungkan'}
+          <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: '11px' }}>
+              <ShieldCheck size={13} color="#60a5fa" />
+              <div>
+                <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '11px' }}>SIWARIS v1.0</div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: 1 }}>Kelurahan Sumbertaman © 2026</div>
               </div>
             </div>
           </div>

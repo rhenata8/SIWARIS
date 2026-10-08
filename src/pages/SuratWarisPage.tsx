@@ -8,13 +8,20 @@ import {
   Eye,
   QrCode,
   Trash2,
-  Filter,
-  FileCheck,
-  Download,
+  Edit3,
+  Settings,
 } from 'lucide-react';
 
 export const SuratWarisPage: React.FC = () => {
-  const { archives, setIsAddModalOpen, setSelectedArchive, setQrModalArchive, deleteArchive } = useApp();
+  const {
+    archives,
+    setIsAddModalOpen,
+    setSelectedArchive,
+    setQrModalArchive,
+    setEditingArchive,
+    setDeletingArchive,
+    setIsFormatModalOpen,
+  } = useApp();
   const [filterQuery, setFilterQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Semua');
 
@@ -42,10 +49,8 @@ export const SuratWarisPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (a: ArchiveSKW) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus arsip ${a.nomorSKW} (${a.namaPewaris})?`)) {
-      await deleteArchive(a.idArsip);
-    }
+  const handleDelete = (a: ArchiveSKW) => {
+    setDeletingArchive(a);
   };
 
   return (
@@ -61,6 +66,12 @@ export const SuratWarisPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setIsFormatModalOpen(true)}
+            >
+              <Settings size={16} /> Kop Surat & TTD
+            </button>
             <button
               className="btn btn-primary"
               onClick={() => setIsAddModalOpen(true)}
@@ -154,6 +165,13 @@ export const SuratWarisPage: React.FC = () => {
                           title="Lihat Detail & Cetak"
                         >
                           <Eye size={13} /> Lihat
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setEditingArchive(x)}
+                          title="Ubah Data SKW"
+                        >
+                          <Edit3 size={13} /> Ubah
                         </button>
                         <button
                           className="btn btn-subtle btn-sm"

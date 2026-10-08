@@ -1,8 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { ArchiveSKW, User, PageId } from '../types';
-import { INITIAL_ARCHIVES, INITIAL_USERS, BASE_HISTORICAL_STATS } from '../data/initialData';
+import { ArchiveSKW, User, PageId, LetterFormat } from '../types';
+import { INITIAL_ARCHIVES, INITIAL_USERS } from '../data/initialData';
 import { convexClient, isConvexEnabled } from '../services/convex';
 import { api } from '../../convex/_generated/api';
+
+const DEFAULT_LETTER_FORMAT: LetterFormat = {
+  namaPemerintah: 'Pemerintah Kota Probolinggo',
+  namaKecamatan: 'Kecamatan Wonoasih',
+  namaKantor: 'Kelurahan Sumbertaman',
+  alamatKantor: 'Jalan Mastrip No. 12, Sumbertaman, Probolinggo',
+  kontakKantor: 'Kode Pos 67237 • Telp: (0335) 421xxx',
+  namaKota: 'Sumbertaman',
+  jabatanPenandatangan: 'Lurah Sumbertaman',
+  namaPenandatangan: 'Drs. H. M. Syaifullah, M.Si',
+  nipPenandatangan: '19740615 199803 1 004',
+  statusTTE: 'Sertifikasi Dokumen Elektronik Sah',
+  ttdDigitalUrl: '',
+};
 
 interface AppContextType {
   activePage: PageId;
@@ -23,18 +37,30 @@ interface AppContextType {
   addArchive: (archive: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => Promise<ArchiveSKW>;
   updateArchive: (id: string, updates: Partial<ArchiveSKW>) => Promise<void>;
   deleteArchive: (id: string) => Promise<void>;
+  updateStatus: (id: string, newStatus: 'Tersimpan' | 'Terverifikasi' | 'Diproses') => Promise<void>;
   addUser: (user: Omit<User, '_id' | 'createdAt'>) => Promise<void>;
   toggleUserStatus: (id: string) => Promise<void>;
   resetToDefault: () => void;
-  // Modal states
+  // Modals & UI states
   isAddModalOpen: boolean;
   setIsAddModalOpen: (open: boolean) => void;
   selectedArchive: ArchiveSKW | null;
   setSelectedArchive: (arch: ArchiveSKW | null) => void;
+  editingArchive: ArchiveSKW | null;
+  setEditingArchive: (arch: ArchiveSKW | null) => void;
+  deletingArchive: ArchiveSKW | null;
+  setDeletingArchive: (arch: ArchiveSKW | null) => void;
   qrModalArchive: ArchiveSKW | null;
   setQrModalArchive: (arch: ArchiveSKW | null) => void;
   previewDocArchive: ArchiveSKW | null;
   setPreviewDocArchive: (arch: ArchiveSKW | null) => void;
+  isFormatModalOpen: boolean;
+  setIsFormatModalOpen: (open: boolean) => void;
+  publicVerifyId: string | null;
+  setPublicVerifyId: (id: string | null) => void;
+  // Letter format customization
+  letterFormat: LetterFormat;
+  updateLetterFormat: (format: Partial<LetterFormat>) => void;
   // Convex connection
   isConvexConfigured: boolean;
   convexUrl: string;
@@ -47,6 +73,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const STORAGE_KEY_ARCHIVES = 'siwaris_archives_v1';
 const STORAGE_KEY_USERS = 'siwaris_users_v1';
 const STORAGE_KEY_CONVEX_URL = 'siwaris_convex_url';
+const STORAGE_KEY_LETTER_FORMAT = 'siwaris_letter_format_v1';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
@@ -55,8 +82,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedArchive, setSelectedArchive] = useState<ArchiveSKW | null>(null);
+  const [editingArchive, setEditingArchive] = useState<ArchiveSKW | null>(null);
+  const [deletingArchive, setDeletingArchive] = useState<ArchiveSKW | null>(null);
   const [qrModalArchive, setQrModalArchive] = useState<ArchiveSKW | null>(null);
   const [previewDocArchive, setPreviewDocArchive] = useState<ArchiveSKW | null>(null);
+  const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
+  const [publicVerifyId, setPublicVerifyId] = useState<string | null>(null);
+
+  // Check URL parameters for QR scan verification (?validasi=SW-SBT-...)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const valId = params.get('validasi') || params.get('id');
+      if (valId) {
+        setPublicVerifyId(valId);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // Letter Format State
+  const [letterFormat, setLetterFormat] = useState<LetterFormat>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_LETTER_FORMAT);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_LETTER_FORMAT;
+  });
+
+  const updateLetterFormat = (updates: Partial<LetterFormat>) => {
+    setLetterFormat((prev) => {
+      const updated = { ...prev, ...updates };
+      localStorage.setItem(STORAGE_KEY_LETTER_FORMAT, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Convex URL state (can be sourced from env or localStorage)
   const [convexUrl, setConvexUrlState] = useState<string>(() => {
@@ -182,24 +245,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isConvexConfigured, syncFromConvex]);
 
-  // Computed stats
-  const totalSKW = BASE_HISTORICAL_STATS.baseTotalSKW + archives.length;
+  // REAL COMPUTED STATS: 100% based on real database records!
+  const totalSKW = archives.length;
   const uniquePewaris = new Set(archives.map((a) => a.nikPewaris || a.namaPewaris)).size;
-  const totalPewaris = BASE_HISTORICAL_STATS.baseTotalSKW + uniquePewaris;
-
-  const currentAhliWarisCount = archives.reduce((acc, a) => acc + (a.jumlahAhliWaris || 0), 0);
-  const totalAhliWaris = BASE_HISTORICAL_STATS.baseAhliWaris + currentAhliWarisCount;
-
-  const count2026 = archives.filter((a) => a.tahun === 2026).length;
-  const total2026 = BASE_HISTORICAL_STATS.year2026Base + count2026;
+  const totalPewaris = uniquePewaris;
+  const totalAhliWaris = archives.reduce((acc, a) => acc + (a.jumlahAhliWaris || 0), 0);
+  const total2026 = archives.filter((a) => a.tahun === 2026).length;
+  const year2024 = archives.filter((a) => a.tahun === 2024).length;
+  const year2025 = archives.filter((a) => a.tahun === 2025).length;
 
   const stats = {
     totalSKW,
     totalPewaris,
     totalAhliWaris,
     total2026,
-    year2024: BASE_HISTORICAL_STATS.year2024,
-    year2025: BASE_HISTORICAL_STATS.year2025,
+    year2024,
+    year2025,
     year2026: total2026,
   };
 
@@ -252,6 +313,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((a) => (a.idArsip === id || a._id === id ? { ...a, ...updates } : a))
     );
 
+    // If selectedArchive is open, keep it in sync
+    setSelectedArchive((prev) => {
+      if (prev && (prev.idArsip === id || prev._id === id)) {
+        return { ...prev, ...updates };
+      }
+      return prev;
+    });
+
     if (convexClient && isConvexConfigured) {
       try {
         const item = archives.find((a) => a.idArsip === id || a._id === id);
@@ -267,8 +336,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateStatus = async (id: string, newStatus: 'Tersimpan' | 'Terverifikasi' | 'Diproses') => {
+    await updateArchive(id, { status: newStatus });
+  };
+
   const deleteArchive = async (id: string) => {
     setArchives((prev) => prev.filter((a) => a.idArsip !== id && a._id !== id));
+    if (selectedArchive && (selectedArchive.idArsip === id || selectedArchive._id === id)) {
+      setSelectedArchive(null);
+    }
 
     if (convexClient && isConvexConfigured) {
       try {
@@ -323,8 +399,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetToDefault = () => {
     localStorage.removeItem(STORAGE_KEY_ARCHIVES);
     localStorage.removeItem(STORAGE_KEY_USERS);
+    localStorage.removeItem(STORAGE_KEY_LETTER_FORMAT);
     setArchives(INITIAL_ARCHIVES);
     setUsers(INITIAL_USERS);
+    setLetterFormat(DEFAULT_LETTER_FORMAT);
   };
 
   return (
@@ -340,6 +418,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addArchive,
         updateArchive,
         deleteArchive,
+        updateStatus,
         addUser,
         toggleUserStatus,
         resetToDefault,
@@ -347,10 +426,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAddModalOpen,
         selectedArchive,
         setSelectedArchive,
+        editingArchive,
+        setEditingArchive,
+        deletingArchive,
+        setDeletingArchive,
         qrModalArchive,
         setQrModalArchive,
         previewDocArchive,
         setPreviewDocArchive,
+        isFormatModalOpen,
+        setIsFormatModalOpen,
+        publicVerifyId,
+        setPublicVerifyId,
+        letterFormat,
+        updateLetterFormat,
         isConvexConfigured,
         convexUrl,
         setConvexUrl,

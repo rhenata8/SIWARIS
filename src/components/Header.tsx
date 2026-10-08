@@ -1,11 +1,11 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Menu, Search, Plus, UserCheck, Database } from 'lucide-react';
+import { Menu, Search, Plus, UserCheck } from 'lucide-react';
 import { PageId } from '../types';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
-  onOpenConvexModal: () => void;
+  onOpenConvexModal?: () => void;
 }
 
 const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
@@ -39,8 +39,8 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   },
 };
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenConvexModal }) => {
-  const { activePage, setActivePage, setIsAddModalOpen, isConvexConfigured } = useApp();
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+  const { activePage, setActivePage, setIsAddModalOpen } = useApp();
   const current = pageTitles[activePage] || { title: 'Dashboard', subtitle: '' };
 
   return (
@@ -69,22 +69,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenConvexMod
         )}
 
         <button
-          onClick={onOpenConvexModal}
-          className={`btn btn-sm ${isConvexConfigured ? 'btn-subtle' : 'btn-secondary'}`}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-          title="Konfigurasi & Status Database Convex"
-        >
-          <Database size={14} color={isConvexConfigured ? '#16a34a' : '#d97706'} />
-          <span>{isConvexConfigured ? 'Convex Cloud' : 'Convex Setup'}</span>
-        </button>
-
-        <button
           onClick={() => setIsAddModalOpen(true)}
           className="btn btn-primary btn-sm"
           style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <Plus size={15} />
-          <span>Tambah SKW</span>
+          <span>＋ Tambah SKW</span>
         </button>
 
         <div className="user-profile-badge">

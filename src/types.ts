@@ -35,6 +35,20 @@ export interface User {
   createdAt: number;
 }
 
+export interface LetterFormat {
+  namaPemerintah: string;
+  namaKecamatan: string;
+  namaKantor: string;
+  alamatKantor: string;
+  kontakKantor: string;
+  namaKota: string;
+  jabatanPenandatangan: string;
+  namaPenandatangan: string;
+  nipPenandatangan: string;
+  statusTTE: string;
+  ttdDigitalUrl?: string;
+}
+
 export type PageId =
   | 'dashboard'
   | 'surat'

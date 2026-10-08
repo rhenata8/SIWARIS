@@ -11,14 +11,16 @@ import { LaporanPage } from './pages/LaporanPage';
 import { PenggunaPage } from './pages/PenggunaPage';
 import { AddSKWModal } from './components/AddSKWModal';
 import { DetailSKWModal } from './components/DetailSKWModal';
+import { EditSKWModal } from './components/EditSKWModal';
+import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { QRCodeModal } from './components/QRCodeModal';
 import { DocumentPreviewModal } from './components/DocumentPreviewModal';
-import { ConvexConfigModal } from './components/ConvexConfigModal';
+import { FormatSuratModal } from './components/FormatSuratModal';
+import { PublicVerificationModal } from './components/PublicVerificationModal';
 
 export const AppContent: React.FC = () => {
   const { activePage, setActivePage } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isConvexModalOpen, setIsConvexModalOpen] = useState(false);
 
   // Global keyboard shortcuts (Ctrl+K to search)
   useEffect(() => {
@@ -55,18 +57,15 @@ export const AppContent: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        onOpenConvexModal={() => setIsConvexModalOpen(true)}
       />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
         <Header
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          onOpenConvexModal={() => setIsConvexModalOpen(true)}
         />
         <main>{renderActivePage()}</main>
 
@@ -88,20 +87,20 @@ export const AppContent: React.FC = () => {
             <b>SIWARIS</b> • Sistem Informasi Arsip Surat Keterangan Waris • Kelurahan Sumbertaman, Kecamatan Wonoasih, Kota Probolinggo
           </div>
           <div>
-            Didukung oleh <b>Convex Database</b> & Siap Deploy di <b>Vercel</b>
+            Arsip Digital Terverifikasi & Terintegrasi
           </div>
         </footer>
       </div>
 
-      {/* Modals */}
+      {/* Global Modals */}
       <AddSKWModal />
       <DetailSKWModal />
+      <EditSKWModal />
+      <DeleteConfirmModal />
       <QRCodeModal />
       <DocumentPreviewModal />
-      <ConvexConfigModal
-        isOpen={isConvexModalOpen}
-        onClose={() => setIsConvexModalOpen(false)}
-      />
+      <FormatSuratModal />
+      <PublicVerificationModal />
     </div>
   );
 };

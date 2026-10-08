@@ -4,18 +4,27 @@ import {
   X,
   Printer,
   QrCode,
-  FileCheck,
   Calendar,
-  User,
   MapPin,
   Users2,
   FileText,
   Download,
-  Building,
+  Edit3,
+  Settings,
 } from 'lucide-react';
+import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
 
 export const DetailSKWModal: React.FC = () => {
-  const { selectedArchive, setSelectedArchive, setQrModalArchive, setPreviewDocArchive } = useApp();
+  const {
+    selectedArchive,
+    setSelectedArchive,
+    setQrModalArchive,
+    setPreviewDocArchive,
+    setEditingArchive,
+    updateStatus,
+    setIsFormatModalOpen,
+    letterFormat,
+  } = useApp();
   const [viewMode, setViewMode] = useState<'detail' | 'surat'>('detail');
 
   if (!selectedArchive) return null;
@@ -36,6 +45,10 @@ export const DetailSKWModal: React.FC = () => {
     window.print();
   };
 
+  const handleDownloadPDF = () => {
+    generateAndDownloadSKWPDF(selectedArchive, letterFormat);
+  };
+
   return (
     <div className="modal-overlay" onClick={() => setSelectedArchive(null)}>
       <div className="modal-dialog large" onClick={(e) => e.stopPropagation()}>
@@ -43,17 +56,49 @@ export const DetailSKWModal: React.FC = () => {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <h3>Arsip SKW: {selectedArchive.idArsip}</h3>
-              <span
-                className={`badge ${
-                  selectedArchive.status === 'Terverifikasi'
-                    ? 'badge-success'
-                    : selectedArchive.status === 'Tersimpan'
-                    ? 'badge-primary'
-                    : 'badge-warning'
-                }`}
+
+              {/* Status Change Selector */}
+              <select
+                className="form-select"
+                style={{
+                  padding: '3px 8px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  width: 'auto',
+                  borderRadius: 20,
+                  cursor: 'pointer',
+                  borderColor:
+                    selectedArchive.status === 'Terverifikasi'
+                      ? '#a7f3d0'
+                      : selectedArchive.status === 'Tersimpan'
+                      ? '#bfdbfe'
+                      : '#fde68a',
+                  background:
+                    selectedArchive.status === 'Terverifikasi'
+                      ? '#ecfdf5'
+                      : selectedArchive.status === 'Tersimpan'
+                      ? '#eff6ff'
+                      : '#fffbeb',
+                  color:
+                    selectedArchive.status === 'Terverifikasi'
+                      ? '#059669'
+                      : selectedArchive.status === 'Tersimpan'
+                      ? '#1d4ed8'
+                      : '#d97706',
+                }}
+                value={selectedArchive.status}
+                onChange={(e) =>
+                  updateStatus(
+                    selectedArchive.idArsip,
+                    e.target.value as 'Tersimpan' | 'Terverifikasi' | 'Diproses'
+                  )
+                }
+                title="Klik untuk mengubah status arsip"
               >
-                {selectedArchive.status}
-              </span>
+                <option value="Tersimpan">Tersimpan</option>
+                <option value="Terverifikasi">Terverifikasi</option>
+                <option value="Diproses">Diproses</option>
+              </select>
             </div>
             <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Nomor Registrasi: {selectedArchive.nomorSKW}
@@ -94,6 +139,8 @@ export const DetailSKWModal: React.FC = () => {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
                 }}
               >
                 <div>
@@ -108,17 +155,27 @@ export const DetailSKWModal: React.FC = () => {
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setEditingArchive(selectedArchive);
+                    }}
+                    style={{ background: '#2563eb' }}
+                  >
+                    <Edit3 size={14} /> Ubah Data SKW
+                  </button>
+                  <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => setQrModalArchive(selectedArchive)}
                     style={{ background: '#fff' }}
                   >
-                    <QrCode size={15} /> QR Verifikasi
+                    <QrCode size={14} /> QR Verifikasi
                   </button>
                   <button
-                    className="btn btn-primary btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setPreviewDocArchive(selectedArchive)}
+                    style={{ background: '#fff' }}
                   >
-                    <FileText size={15} /> Buka Berkas PDF
+                    <FileText size={14} /> Buka Berkas Scan
                   </button>
                 </div>
               </div>
@@ -163,7 +220,7 @@ export const DetailSKWModal: React.FC = () => {
                       </tr>
                       <tr>
                         <td style={{ color: '#64748b', padding: '6px 0' }}>Nama Berkas</td>
-                        <td style={{ fontWeight: 600, color: '#2563eb' }}>{selectedArchive.fileName || 'SKW_Digital.pdf'}</td>
+                        <td style={{ fontWeight: 600, color: '#2563eb' }}>{selectedArchive.fileName || `${selectedArchive.idArsip}.pdf`}</td>
                       </tr>
                       <tr>
                         <td style={{ color: '#64748b', padding: '6px 0' }}>Ukuran Berkas</td>
@@ -218,13 +275,23 @@ export const DetailSKWModal: React.FC = () => {
               </div>
             </div>
           ) : (
-            /* Official Letterhead Template */
+            /* Official Letterhead Template (Uses dynamic letterFormat) */
             <div className="official-letter" id="printSection">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }} className="no-print">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setIsFormatModalOpen(true)}
+                >
+                  <Settings size={14} /> Sesuaikan Kop Surat & TTD
+                </button>
+              </div>
+
               <div className="letter-kop">
-                <h4>PEMERINTAH KOTA PROBOLINGGO</h4>
-                <h3>KECAMATAN WONOASIH</h3>
-                <h2>KELURAHAN SUMBERTAMAN</h2>
-                <p>Jalan Mastrip No. 12, Sumbertaman, Probolinggo • Kode Pos 67237 • Telp: (0335) 421xxx</p>
+                <h4>{letterFormat.namaPemerintah.toUpperCase()}</h4>
+                <h3>{letterFormat.namaKecamatan.toUpperCase()}</h3>
+                <h2>{letterFormat.namaKantor.toUpperCase()}</h2>
+                <p>{letterFormat.alamatKantor} • {letterFormat.kontakKantor}</p>
               </div>
 
               <div className="letter-title">
@@ -234,8 +301,8 @@ export const DetailSKWModal: React.FC = () => {
 
               <div className="letter-content">
                 <p>
-                  Yang bertanda tangan di bawah ini, Kepala Kelurahan Sumbertaman, Kecamatan Wonoasih,
-                  Kota Probolinggo, dengan ini menerangkan dengan sebenarnya bahwa:
+                  Yang bertanda tangan di bawah ini, Kepala {letterFormat.namaKantor}, {letterFormat.namaKecamatan},
+                  {letterFormat.namaPemerintah}, dengan ini menerangkan dengan sebenarnya bahwa:
                 </p>
 
                 <table className="letter-meta-table">
@@ -264,7 +331,8 @@ export const DetailSKWModal: React.FC = () => {
                 </table>
 
                 <p style={{ marginTop: 12 }}>
-                  Telah meninggal dunia dan meninggalkan ahli waris yang sah sebagai berikut:
+                  Telah berpulang ke rahmatullah dan meninggalkan ahli waris yang sah berjumlah{' '}
+                  <b>{selectedArchive.jumlahAhliWaris} orang</b> sebagai berikut:
                 </p>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', margin: '10px 0', border: '1px solid #000' }}>
@@ -303,15 +371,19 @@ export const DetailSKWModal: React.FC = () => {
                   </div>
 
                   <div className="signature-box">
-                    <p>Sumbertaman, {formatDate(selectedArchive.tanggalSurat)}</p>
-                    <p>Lurah Sumbertaman</p>
+                    <p>{letterFormat.namaKota}, {formatDate(selectedArchive.tanggalSurat)}</p>
+                    <p>{letterFormat.jabatanPenandatangan}</p>
                     <div className="signature-space">
-                      <div style={{ color: '#2563eb', fontSize: 11, border: '1px solid #93c5fd', padding: '4px 8px', borderRadius: 4, background: '#eff6ff' }}>
-                        ✓ Ditandatangani Secara Elektronik (TTE)
-                      </div>
+                      {letterFormat.ttdDigitalUrl ? (
+                        <img src={letterFormat.ttdDigitalUrl} alt="TTD" style={{ maxHeight: 52, maxWidth: 120 }} />
+                      ) : (
+                        <div style={{ color: '#2563eb', fontSize: 11, border: '1px solid #93c5fd', padding: '4px 8px', borderRadius: 4, background: '#eff6ff' }}>
+                          ✓ {letterFormat.statusTTE}
+                        </div>
+                      )}
                     </div>
-                    <p><b><u>Drs. H. M. Syaifullah, M.Si</u></b></p>
-                    <p style={{ fontSize: 11 }}>NIP. 19740615 199803 1 004</p>
+                    <p><b><u>{letterFormat.namaPenandatangan}</u></b></p>
+                    <p style={{ fontSize: 11 }}>NIP. {letterFormat.nipPenandatangan}</p>
                   </div>
                 </div>
               </div>
@@ -323,11 +395,17 @@ export const DetailSKWModal: React.FC = () => {
           <button className="btn btn-secondary" onClick={() => setSelectedArchive(null)}>
             Tutup
           </button>
+          <button className="btn btn-secondary" onClick={() => setEditingArchive(selectedArchive)}>
+            <Edit3 size={15} /> Ubah SKW
+          </button>
           <button className="btn btn-secondary" onClick={() => setQrModalArchive(selectedArchive)}>
-            <QrCode size={16} /> QR Code
+            <QrCode size={15} /> QR Code
+          </button>
+          <button className="btn btn-secondary" onClick={handleDownloadPDF}>
+            <Download size={15} /> Unduh PDF Asli
           </button>
           <button className="btn btn-primary" onClick={handlePrint}>
-            <Printer size={16} /> Cetak Surat Resmi
+            <Printer size={15} /> Cetak Dokumen
           </button>
         </div>
       </div>

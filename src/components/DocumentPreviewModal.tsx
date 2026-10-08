@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Download, Printer, ZoomIn, ZoomOut, FileText, CheckCircle, Shield } from 'lucide-react';
+import { X, Download, ZoomIn, ZoomOut, FileText, CheckCircle } from 'lucide-react';
+import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
 
 export const DocumentPreviewModal: React.FC = () => {
-  const { previewDocArchive, setPreviewDocArchive } = useApp();
+  const { previewDocArchive, setPreviewDocArchive, letterFormat } = useApp();
   const [zoomLevel, setZoomLevel] = useState<number>(100);
 
   if (!previewDocArchive) return null;
 
   const handleDownload = () => {
-    // Simulate downloading PDF file
-    const element = document.createElement('a');
-    const file = new Blob(
-      [
-        `DOKUMEN SURAT KETERANGAN WARIS\nNomor: ${previewDocArchive.nomorSKW}\nID: ${previewDocArchive.idArsip}\nPewaris: ${previewDocArchive.namaPewaris}\nKelurahan Sumbertaman, Kota Probolinggo\nStatus: Terverifikasi di SIWARIS`,
-      ],
-      { type: 'text/plain' }
-    );
-    element.href = URL.createObjectURL(file);
-    element.download = previewDocArchive.fileName || `${previewDocArchive.idArsip}.pdf`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    generateAndDownloadSKWPDF(previewDocArchive, letterFormat);
+  };
+
+  const formatDate = (tgl: string) => {
+    try {
+      return new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return tgl;
+    }
   };
 
   return (
@@ -32,10 +33,10 @@ export const DocumentPreviewModal: React.FC = () => {
             <FileText size={20} color="#2563eb" />
             <div>
               <h3 style={{ fontSize: 16 }}>
-                Pratinjau Berkas: {previewDocArchive.fileName || 'SKW_Digital.pdf'}
+                Pratinjau Berkas: {previewDocArchive.fileName || `${previewDocArchive.idArsip}.pdf`}
               </h3>
               <p style={{ fontSize: 11, color: '#64748b' }}>
-                {previewDocArchive.idArsip} • {previewDocArchive.fileSize || '1.4 MB'} • Format Dokumen Digital
+                {previewDocArchive.idArsip} • {previewDocArchive.fileSize || '1.4 MB'} • Dokumen Resmi SIWARIS
               </p>
             </div>
           </div>
@@ -64,7 +65,7 @@ export const DocumentPreviewModal: React.FC = () => {
             </div>
 
             <button className="btn btn-primary btn-sm" onClick={handleDownload}>
-              <Download size={14} /> Unduh
+              <Download size={14} /> Unduh PDF Asli
             </button>
             <button className="modal-close-btn" onClick={() => setPreviewDocArchive(null)}>
               <X size={20} />
@@ -120,13 +121,13 @@ export const DocumentPreviewModal: React.FC = () => {
               ARSIP RESMI KELURAHAN SUMBERTAMAN
             </div>
 
-            {/* Official Header */}
+            {/* Official Header using letterFormat */}
             <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 10, marginBottom: 18 }}>
-              <div style={{ fontSize: 13, textTransform: 'uppercase' }}>Pemerintah Kota Probolinggo</div>
-              <div style={{ fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase' }}>Kecamatan Wonoasih</div>
-              <div style={{ fontSize: 18, fontWeight: 'bold', textTransform: 'uppercase' }}>Kelurahan Sumbertaman</div>
+              <div style={{ fontSize: 13, textTransform: 'uppercase' }}>{letterFormat.namaPemerintah}</div>
+              <div style={{ fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase' }}>{letterFormat.namaKecamatan}</div>
+              <div style={{ fontSize: 18, fontWeight: 'bold', textTransform: 'uppercase' }}>{letterFormat.namaKantor}</div>
               <div style={{ fontSize: 10, fontFamily: 'sans-serif', color: '#4b5563', marginTop: 2 }}>
-                Jl. Mastrip No. 12 Probolinggo 67237 • SIWARIS Arsip Digital Terverifikasi
+                {letterFormat.alamatKantor} • {letterFormat.kontakKantor}
               </div>
             </div>
 
@@ -140,14 +141,9 @@ export const DocumentPreviewModal: React.FC = () => {
             </div>
 
             <div style={{ fontSize: 12, lineHeight: 1.6, textAlign: 'justify', marginBottom: 14 }}>
-              Menerangkan bahwa seorang penduduk bernama <b>{previewDocArchive.namaPewaris}</b>, NIK:{' '}
-              {previewDocArchive.nikPewaris}, bertempat tinggal di {previewDocArchive.alamat || 'Kelurahan Sumbertaman'},
-              telah berpulang ke rahmatullah pada tanggal{' '}
-              {new Date(previewDocArchive.tanggalMeninggal).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}.
+              Yang bertanda tangan di bawah ini, Kepala {letterFormat.namaKantor}, {letterFormat.namaKecamatan}, {letterFormat.namaPemerintah}, dengan ini menerangkan dengan sebenarnya bahwa:
+              <br />
+              Seorang penduduk bernama <b>{previewDocArchive.namaPewaris}</b>, NIK: {previewDocArchive.nikPewaris}, bertempat tinggal di {previewDocArchive.alamat || 'Kelurahan Sumbertaman'}, telah berpulang ke rahmatullah pada tanggal {formatDate(previewDocArchive.tanggalMeninggal)}.
             </div>
 
             <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 8 }}>
@@ -179,22 +175,26 @@ export const DocumentPreviewModal: React.FC = () => {
             <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <div style={{ fontSize: 10, fontFamily: 'sans-serif', color: '#6b7280' }}>
                 <div>ID Arsip: {previewDocArchive.idArsip}</div>
-                <div>Status: Disahkan Resmi Kelurahan Sumbertaman</div>
+                <div>Status: Disahkan Resmi {letterFormat.namaKantor}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#059669', marginTop: 4, fontWeight: 'bold' }}>
                   <CheckCircle size={12} /> Terverifikasi Sistem SIWARIS
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center', fontSize: 11, width: 200 }}>
-                <div>Sumbertaman, {previewDocArchive.tanggalSurat}</div>
-                <div>Lurah Sumbertaman</div>
+              <div style={{ textAlign: 'center', fontSize: 11, width: 220 }}>
+                <div>{letterFormat.namaKota}, {formatDate(previewDocArchive.tanggalSurat)}</div>
+                <div>{letterFormat.jabatanPenandatangan}</div>
                 <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 10, color: '#2563eb', border: '1px solid #2563eb', padding: '2px 6px', borderRadius: 4 }}>
-                    ✓ TTE Verified
-                  </span>
+                  {letterFormat.ttdDigitalUrl ? (
+                    <img src={letterFormat.ttdDigitalUrl} alt="TTD" style={{ maxHeight: 42, maxWidth: 100 }} />
+                  ) : (
+                    <span style={{ fontSize: 10, color: '#2563eb', border: '1px solid #2563eb', padding: '2px 6px', borderRadius: 4 }}>
+                      ✓ {letterFormat.statusTTE}
+                    </span>
+                  )}
                 </div>
-                <div><b><u>Drs. H. M. Syaifullah, M.Si</u></b></div>
-                <div style={{ fontSize: 9 }}>NIP. 19740615 199803 1 004</div>
+                <div><b><u>{letterFormat.namaPenandatangan}</u></b></div>
+                <div style={{ fontSize: 9 }}>NIP. {letterFormat.nipPenandatangan}</div>
               </div>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const DocumentPreviewModal: React.FC = () => {
             Tutup
           </button>
           <button className="btn btn-primary" onClick={handleDownload}>
-            <Download size={15} /> Unduh Berkas
+            <Download size={15} /> Unduh PDF Resmi
           </button>
         </div>
       </div>
