@@ -13,10 +13,12 @@ import { AddSKWModal } from './components/AddSKWModal';
 import { DetailSKWModal } from './components/DetailSKWModal';
 import { QRCodeModal } from './components/QRCodeModal';
 import { DocumentPreviewModal } from './components/DocumentPreviewModal';
+import { ConvexConfigModal } from './components/ConvexConfigModal';
 
 export const AppContent: React.FC = () => {
   const { activePage, setActivePage } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isConvexModalOpen, setIsConvexModalOpen] = useState(false);
 
   // Global keyboard shortcuts (Ctrl+K to search)
   useEffect(() => {
@@ -57,11 +59,15 @@ export const AppContent: React.FC = () => {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onOpenConvexModal={() => setIsConvexModalOpen(true)}
       />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Header
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onOpenConvexModal={() => setIsConvexModalOpen(true)}
+        />
         <main>{renderActivePage()}</main>
 
         <footer
@@ -92,6 +98,10 @@ export const AppContent: React.FC = () => {
       <DetailSKWModal />
       <QRCodeModal />
       <DocumentPreviewModal />
+      <ConvexConfigModal
+        isOpen={isConvexModalOpen}
+        onClose={() => setIsConvexModalOpen(false)}
+      />
     </div>
   );
 };

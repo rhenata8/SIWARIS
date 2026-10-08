@@ -18,9 +18,10 @@ import {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenConvexModal: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenConvexModal }) => {
   const { activePage, setActivePage, archives, isConvexConfigured, setIsAddModalOpen } = useApp();
 
   const navItems: { id: PageId; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -110,7 +111,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="convex-status-pill">
+          <div
+            className="convex-status-pill"
+            onClick={onOpenConvexModal}
+            style={{ cursor: 'pointer' }}
+            title="Klik untuk konfigurasi dan status Convex"
+          >
             <span className={`status-dot ${isConvexConfigured ? '' : 'warning'}`}></span>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <div style={{ fontWeight: 600, fontSize: '11px', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -118,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 {isConvexConfigured ? 'Convex Cloud' : 'Local Storage Mode'}
               </div>
               <div style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {isConvexConfigured ? 'Connected Realtime' : 'Siap Sinkron Convex'}
+                {isConvexConfigured ? 'Connected Realtime' : 'Klik untuk hubungkan'}
               </div>
             </div>
           </div>

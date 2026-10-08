@@ -1,10 +1,11 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Menu, Search, Plus, UserCheck } from 'lucide-react';
+import { Menu, Search, Plus, UserCheck, Database } from 'lucide-react';
 import { PageId } from '../types';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  onOpenConvexModal: () => void;
 }
 
 const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
@@ -38,8 +39,8 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   },
 };
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
-  const { activePage, setActivePage, setIsAddModalOpen } = useApp();
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onOpenConvexModal }) => {
+  const { activePage, setActivePage, setIsAddModalOpen, isConvexConfigured } = useApp();
   const current = pageTitles[activePage] || { title: 'Dashboard', subtitle: '' };
 
   return (
@@ -66,6 +67,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <kbd style={{ background: '#e2e8f0', padding: '1px 6px', borderRadius: 4, fontSize: 10 }}>Ctrl+K</kbd>
           </div>
         )}
+
+        <button
+          onClick={onOpenConvexModal}
+          className={`btn btn-sm ${isConvexConfigured ? 'btn-subtle' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+          title="Konfigurasi & Status Database Convex"
+        >
+          <Database size={14} color={isConvexConfigured ? '#16a34a' : '#d97706'} />
+          <span>{isConvexConfigured ? 'Convex Cloud' : 'Convex Setup'}</span>
+        </button>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
