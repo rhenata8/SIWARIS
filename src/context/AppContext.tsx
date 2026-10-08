@@ -89,11 +89,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [publicVerifyId, setPublicVerifyId] = useState<string | null>(null);
 
-  // Check URL parameters for QR scan verification (?validasi=SW-SBT-...)
+  // Check URL parameters for QR scan verification (?validasi=SW-SBT-..., /validasi?id=..., /validasi/SW-SBT-...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const valId = params.get('validasi') || params.get('id');
+      let valId = params.get('validasi') || params.get('id');
+      if (!valId && window.location.pathname.startsWith('/validasi/')) {
+        const seg = window.location.pathname.replace('/validasi/', '').trim();
+        if (seg) valId = seg;
+      }
       if (valId) {
         setPublicVerifyId(valId);
       }
@@ -266,7 +270,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addArchive = async (data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => {
     const year = data.tanggalSurat ? new Date(data.tanggalSurat).getFullYear() : 2026;
-    const nextSeq = archives.length + 1;
+    
+    // Find highest existing sequence for the year to guarantee uniqueness
+    const existingNums = archives
+      .map((a) => {
+        const parts = a.idArsip.split('-');
+        return parts.length === 4 && parts[2] === String(year) ? parseInt(parts[3], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums, archives.length) : archives.length;
+    const nextSeq = maxNum + 1;
     const idArsip = `SW-SBT-${year}-${String(nextSeq).padStart(4, '0')}`;
 
     const newArch: ArchiveSKW = {

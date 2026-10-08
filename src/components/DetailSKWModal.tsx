@@ -13,6 +13,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
+import { OfficialSKWDocument } from './OfficialSKWDocument';
 
 export const DetailSKWModal: React.FC = () => {
   const {
@@ -42,7 +43,10 @@ export const DetailSKWModal: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    setViewMode('surat');
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
 
   const handleDownloadPDF = () => {
@@ -275,9 +279,8 @@ export const DetailSKWModal: React.FC = () => {
               </div>
             </div>
           ) : (
-            /* Official Letterhead Template (Uses dynamic letterFormat) */
-            <div className="official-letter" id="printSection">
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }} className="no-print">
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }} className="no-print">
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
@@ -287,106 +290,11 @@ export const DetailSKWModal: React.FC = () => {
                 </button>
               </div>
 
-              <div className="letter-kop">
-                <h4>{letterFormat.namaPemerintah.toUpperCase()}</h4>
-                <h3>{letterFormat.namaKecamatan.toUpperCase()}</h3>
-                <h2>{letterFormat.namaKantor.toUpperCase()}</h2>
-                <p>{letterFormat.alamatKantor} • {letterFormat.kontakKantor}</p>
-              </div>
-
-              <div className="letter-title">
-                <h4>SURAT KETERANGAN WARIS</h4>
-                <p>Nomor: {selectedArchive.nomorSKW}</p>
-              </div>
-
-              <div className="letter-content">
-                <p>
-                  Yang bertanda tangan di bawah ini, Kepala {letterFormat.namaKantor}, {letterFormat.namaKecamatan},
-                  {letterFormat.namaPemerintah}, dengan ini menerangkan dengan sebenarnya bahwa:
-                </p>
-
-                <table className="letter-meta-table">
-                  <tbody>
-                    <tr>
-                      <td style={{ width: 170 }}>Nama Lengkap</td>
-                      <td style={{ width: 10 }}>:</td>
-                      <td><b>{selectedArchive.namaPewaris}</b></td>
-                    </tr>
-                    <tr>
-                      <td>NIK</td>
-                      <td>:</td>
-                      <td>{selectedArchive.nikPewaris}</td>
-                    </tr>
-                    <tr>
-                      <td>Alamat Terakhir</td>
-                      <td>:</td>
-                      <td>{selectedArchive.alamat || 'Kelurahan Sumbertaman'}</td>
-                    </tr>
-                    <tr>
-                      <td>Tanggal Meninggal</td>
-                      <td>:</td>
-                      <td>{formatDate(selectedArchive.tanggalMeninggal)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <p style={{ marginTop: 12 }}>
-                  Telah berpulang ke rahmatullah dan meninggalkan ahli waris yang sah berjumlah{' '}
-                  <b>{selectedArchive.jumlahAhliWaris} orang</b> sebagai berikut:
-                </p>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', margin: '10px 0', border: '1px solid #000' }}>
-                  <thead>
-                    <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #000' }}>
-                      <th style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>No</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>Nama Ahli Waris</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>Hubungan Keluarga</th>
-                      <th style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>NIK</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedArchive.ahliWarisList && selectedArchive.ahliWarisList.map((a, i) => (
-                      <tr key={i}>
-                        <td style={{ padding: '4px 8px', border: '1px solid #000', textAlign: 'center', fontSize: 12 }}>{i + 1}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}><b>{a.nama}</b></td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>{a.hubungan}</td>
-                        <td style={{ padding: '4px 8px', border: '1px solid #000', fontSize: 12 }}>{a.nik || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <p style={{ marginTop: 14 }}>
-                  Demikian Surat Keterangan Waris ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.
-                </p>
-
-                <div className="letter-footer-signatures">
-                  <div className="signature-box">
-                    <p>ID Arsip Digital:</p>
-                    <div style={{ padding: '8px', border: '1px dashed #999', margin: '6px auto', width: 140, fontSize: 11 }}>
-                      <b>{selectedArchive.idArsip}</b>
-                      <br />
-                      Status: {selectedArchive.status}
-                    </div>
-                  </div>
-
-                  <div className="signature-box">
-                    <p>{letterFormat.namaKota}, {formatDate(selectedArchive.tanggalSurat)}</p>
-                    <p>{letterFormat.jabatanPenandatangan}</p>
-                    <div className="signature-space">
-                      {letterFormat.ttdDigitalUrl ? (
-                        <img src={letterFormat.ttdDigitalUrl} alt="TTD" style={{ maxHeight: 52, maxWidth: 120 }} />
-                      ) : (
-                        <div style={{ color: '#2563eb', fontSize: 11, border: '1px solid #93c5fd', padding: '4px 8px', borderRadius: 4, background: '#eff6ff' }}>
-                          ✓ {letterFormat.statusTTE}
-                        </div>
-                      )}
-                    </div>
-                    <p><b><u>{letterFormat.namaPenandatangan}</u></b></p>
-                    <p style={{ fontSize: 11 }}>NIP. {letterFormat.nipPenandatangan}</p>
-                  </div>
-                </div>
-              </div>
+              <OfficialSKWDocument
+                archive={selectedArchive}
+                letterFormat={letterFormat}
+                id="printSection"
+              />
             </div>
           )}
         </div>

@@ -14,7 +14,9 @@ export const PencarianPage: React.FC = () => {
       x.namaPewaris.toLowerCase().includes(q) ||
       x.nomorSKW.toLowerCase().includes(q) ||
       x.idArsip.toLowerCase().includes(q) ||
-      x.nikPewaris.toLowerCase().includes(q);
+      (x.nikPewaris && x.nikPewaris.toLowerCase().includes(q)) ||
+      (x.alamat && x.alamat.toLowerCase().includes(q)) ||
+      x.ahliWarisList?.some((a) => a.nama.toLowerCase().includes(q));
 
     const matchesYear =
       selectedYear === 'Semua' || String(x.tahun) === selectedYear;

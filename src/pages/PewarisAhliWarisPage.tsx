@@ -19,10 +19,17 @@ export const PewarisAhliWarisPage: React.FC = () => {
     }
   };
 
+  const maskNIK = (nik?: string) => {
+    if (!nik) return '-';
+    if (showMaskedNIK) return nik;
+    if (nik.length <= 8) return nik;
+    return nik.slice(0, 6) + '******' + nik.slice(-4);
+  };
+
   const filtered = archives.filter(
     (x) =>
       x.namaPewaris.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      x.nikPewaris.includes(searchTerm) ||
+      (x.nikPewaris && x.nikPewaris.includes(searchTerm)) ||
       x.idArsip.toLowerCase().includes(searchTerm.toLowerCase()) ||
       x.ahliWarisList?.some((a) => a.nama.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -93,7 +100,7 @@ export const PewarisAhliWarisPage: React.FC = () => {
                     <td>
                       <div style={{ fontWeight: 700, color: '#0f172a' }}>{x.namaPewaris}</div>
                       <div style={{ fontSize: 11, color: '#64748b' }}>
-                        NIK: {showMaskedNIK ? x.nikPewaris : x.nikPewaris.slice(0, 6) + '******' + x.nikPewaris.slice(-4)}
+                        NIK: {maskNIK(x.nikPewaris)}
                       </div>
                     </td>
                     <td style={{ color: '#dc2626', fontWeight: 500 }}>

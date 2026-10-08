@@ -95,8 +95,7 @@ export const LaporanPage: React.FC = () => {
             </div>
             <div className="stat-value">{stats.year2025}</div>
             <div className="stat-desc">
-              <span className="stat-trend">+77%</span>
-              <span>peningkatan volume arsip</span>
+              <span>arsip tercatat resmi</span>
             </div>
           </div>
 

@@ -131,14 +131,24 @@ export const QRCodeModal: React.FC = () => {
             <span>Tanda Tangan Digital & Arsip Sah Kelurahan Sumbertaman</span>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-subtle btn-sm"
-            onClick={handleOpenLink}
-            style={{ width: '100%', fontSize: 12 }}
-          >
-            <ExternalLink size={13} /> Buka Tautan Verifikasi
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-subtle btn-sm"
+              onClick={handleTestVerify}
+              style={{ flex: 1, fontSize: 12 }}
+            >
+              <ShieldCheck size={13} color="#059669" /> Tes Tampilan Verifikasi
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle btn-sm"
+              onClick={handleOpenLink}
+              style={{ flex: 1, fontSize: 12 }}
+            >
+              <ExternalLink size={13} /> Buka Tab Baru
+            </button>
+          </div>
         </div>
 
         <div className="modal-footer" style={{ justifyContent: 'space-between' }}>

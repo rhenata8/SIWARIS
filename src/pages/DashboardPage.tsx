@@ -169,7 +169,7 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="stat-value">{stats.total2026}</div>
           <div className="stat-desc">
-            <span className="stat-trend">+100%</span>
+            <span className="stat-trend">Aktif</span>
             <span>SKW diterbitkan tahun ini</span>
           </div>
         </div>

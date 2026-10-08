@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Download, ZoomIn, ZoomOut, FileText, CheckCircle } from 'lucide-react';
+import { X, Download, ZoomIn, ZoomOut, FileText } from 'lucide-react';
 import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
+import { OfficialSKWDocument } from './OfficialSKWDocument';
 
 export const DocumentPreviewModal: React.FC = () => {
   const { previewDocArchive, setPreviewDocArchive, letterFormat } = useApp();
@@ -11,18 +12,6 @@ export const DocumentPreviewModal: React.FC = () => {
 
   const handleDownload = () => {
     generateAndDownloadSKWPDF(previewDocArchive, letterFormat);
-  };
-
-  const formatDate = (tgl: string) => {
-    try {
-      return new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-    } catch {
-      return tgl;
-    }
   };
 
   return (
@@ -84,119 +73,20 @@ export const DocumentPreviewModal: React.FC = () => {
             overflow: 'auto',
           }}
         >
-          {/* Simulated PDF Viewer Paper */}
+          {/* Simulated PDF Viewer Paper with real OfficialSKWDocument */}
           <div
             style={{
               width: '100%',
-              maxWidth: 620,
-              background: '#ffffff',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
-              borderRadius: 4,
-              padding: '40px 36px',
-              fontFamily: 'serif',
+              maxWidth: 720,
               transform: `scale(${zoomLevel / 100})`,
               transformOrigin: 'top center',
               transition: 'transform 0.15s ease',
-              position: 'relative',
-              color: '#111827',
             }}
           >
-            {/* Watermark */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%) rotate(-35deg)',
-                fontSize: 34,
-                fontWeight: 900,
-                color: 'rgba(37, 99, 235, 0.07)',
-                pointerEvents: 'none',
-                whiteSpace: 'nowrap',
-                fontFamily: 'sans-serif',
-                border: '4px dashed rgba(37, 99, 235, 0.1)',
-                padding: '16px 28px',
-              }}
-            >
-              ARSIP RESMI KELURAHAN SUMBERTAMAN
-            </div>
-
-            {/* Official Header using letterFormat */}
-            <div style={{ textAlign: 'center', borderBottom: '3px double #000', paddingBottom: 10, marginBottom: 18 }}>
-              <div style={{ fontSize: 13, textTransform: 'uppercase' }}>{letterFormat.namaPemerintah}</div>
-              <div style={{ fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase' }}>{letterFormat.namaKecamatan}</div>
-              <div style={{ fontSize: 18, fontWeight: 'bold', textTransform: 'uppercase' }}>{letterFormat.namaKantor}</div>
-              <div style={{ fontSize: 10, fontFamily: 'sans-serif', color: '#4b5563', marginTop: 2 }}>
-                {letterFormat.alamatKantor} • {letterFormat.kontakKantor}
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center', margin: '14px 0' }}>
-              <div style={{ fontSize: 15, fontWeight: 'bold', textDecoration: 'underline' }}>
-                SURAT KETERANGAN WARIS
-              </div>
-              <div style={{ fontSize: 11, fontFamily: 'sans-serif', marginTop: 2 }}>
-                Nomor: {previewDocArchive.nomorSKW}
-              </div>
-            </div>
-
-            <div style={{ fontSize: 12, lineHeight: 1.6, textAlign: 'justify', marginBottom: 14 }}>
-              Yang bertanda tangan di bawah ini, Kepala {letterFormat.namaKantor}, {letterFormat.namaKecamatan}, {letterFormat.namaPemerintah}, dengan ini menerangkan dengan sebenarnya bahwa:
-              <br />
-              Seorang penduduk bernama <b>{previewDocArchive.namaPewaris}</b>, NIK: {previewDocArchive.nikPewaris}, bertempat tinggal di {previewDocArchive.alamat || 'Kelurahan Sumbertaman'}, telah berpulang ke rahmatullah pada tanggal {formatDate(previewDocArchive.tanggalMeninggal)}.
-            </div>
-
-            <div style={{ fontSize: 12, lineHeight: 1.6, marginBottom: 8 }}>
-              Almarhum/Almarhumah meninggalkan ahli waris yang sah berjumlah{' '}
-              <b>{previewDocArchive.jumlahAhliWaris} orang</b> sebagai berikut:
-            </div>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, marginBottom: 18 }}>
-              <thead>
-                <tr style={{ background: '#f3f4f6', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
-                  <th style={{ padding: '4px 6px', border: '1px solid #000', textAlign: 'center', width: 30 }}>No</th>
-                  <th style={{ padding: '4px 6px', border: '1px solid #000', textAlign: 'left' }}>Nama Ahli Waris</th>
-                  <th style={{ padding: '4px 6px', border: '1px solid #000', textAlign: 'left' }}>Hubungan</th>
-                  <th style={{ padding: '4px 6px', border: '1px solid #000', textAlign: 'left' }}>NIK</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewDocArchive.ahliWarisList && previewDocArchive.ahliWarisList.map((a, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '4px 6px', border: '1px solid #000', textAlign: 'center' }}>{i + 1}</td>
-                    <td style={{ padding: '4px 6px', border: '1px solid #000' }}><b>{a.nama}</b></td>
-                    <td style={{ padding: '4px 6px', border: '1px solid #000' }}>{a.hubungan}</td>
-                    <td style={{ padding: '4px 6px', border: '1px solid #000' }}>{a.nik || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <div style={{ fontSize: 10, fontFamily: 'sans-serif', color: '#6b7280' }}>
-                <div>ID Arsip: {previewDocArchive.idArsip}</div>
-                <div>Status: Disahkan Resmi {letterFormat.namaKantor}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#059669', marginTop: 4, fontWeight: 'bold' }}>
-                  <CheckCircle size={12} /> Terverifikasi Sistem SIWARIS
-                </div>
-              </div>
-
-              <div style={{ textAlign: 'center', fontSize: 11, width: 220 }}>
-                <div>{letterFormat.namaKota}, {formatDate(previewDocArchive.tanggalSurat)}</div>
-                <div>{letterFormat.jabatanPenandatangan}</div>
-                <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {letterFormat.ttdDigitalUrl ? (
-                    <img src={letterFormat.ttdDigitalUrl} alt="TTD" style={{ maxHeight: 42, maxWidth: 100 }} />
-                  ) : (
-                    <span style={{ fontSize: 10, color: '#2563eb', border: '1px solid #2563eb', padding: '2px 6px', borderRadius: 4 }}>
-                      ✓ {letterFormat.statusTTE}
-                    </span>
-                  )}
-                </div>
-                <div><b><u>{letterFormat.namaPenandatangan}</u></b></div>
-                <div style={{ fontSize: 9 }}>NIP. {letterFormat.nipPenandatangan}</div>
-              </div>
-            </div>
+            <OfficialSKWDocument
+              archive={previewDocArchive}
+              letterFormat={letterFormat}
+            />
           </div>
         </div>
 

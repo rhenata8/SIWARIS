@@ -71,9 +71,11 @@ export const EditSKWModal: React.FC = () => {
 
     try {
       setIsSaving(true);
+      const yr = new Date(tanggalSurat).getFullYear();
       await updateArchive(editingArchive.idArsip, {
         nomorSKW: nomorSKW.trim(),
         tanggalSurat,
+        tahun: !isNaN(yr) ? yr : editingArchive.tahun,
         namaPewaris: namaPewaris.trim(),
         nikPewaris: nikPewaris.trim(),
         tanggalMeninggal,
