@@ -100,14 +100,20 @@ export const DocumentPreviewModal: React.FC<{ mode?: DocumentPreviewMode }> = ({
     generateAndDownloadSKWPDF(archive, letterFormat);
   };
 
-  const handleDownloadScan = () => {
+  const handleDownloadScan = async () => {
     if (!origUrl) return;
+    // Unduh via blob: attribute `download` diabaikan browser untuk URL
+    // lintas origin (convex.cloud), sehingga harus fetch → objectURL.
+    const res = await fetch(origUrl);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = origUrl;
+    a.href = objectUrl;
     a.download = archive.fileName || `${archive.idArsip}.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
   };
 
   const isImage = /\.(png|jpe?g|gif|webp)$/i.test(archive.fileName || '');

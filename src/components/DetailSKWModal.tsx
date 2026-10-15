@@ -86,12 +86,19 @@ export const DetailSKWModal: React.FC = () => {
         setErrorMsg('Berkas scan tidak dapat ditemukan di penyimpanan.');
         return;
       }
+      // Unduh via blob: attribute `download` diabaikan browser untuk URL
+      // lintas origin (convex.cloud), sehingga harus fetch → objectURL.
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = objectUrl;
       a.download = selectedArchive.fileName || `${selectedArchive.idArsip}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
     } catch (e) {
       console.error(e);
       setErrorMsg('Gagal mengunduh berkas scan.');
