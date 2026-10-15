@@ -257,3 +257,184 @@ export const changeOwnPassword = action({
     return { ok: true };
   },
 });
+
+/**
+ * SIWARIS v2.2 — User management CRUD (admin-only).
+ *
+ * NOTE: these are Node *actions* (not mutations) because password hashing
+ * requires node:crypto (scrypt), which is only available inside "use node"
+ * files. Like the rest of this file they return structured results
+ * ({ ok: false, error }) instead of throwing, because errors thrown from
+ * Node actions surface as a generic "Server Error" on the browser side —
+ * structured results are the only way the Indonesian error messages can
+ * reach the client.
+ */
+async function requireAdmin(ctx: any, adminToken: string) {
+  const session: any = await ctx.runQuery(internal.auth.validateSession, {
+    token: adminToken,
+  });
+  if (!session) {
+    return {
+      ok: false as const,
+      error: "Sesi admin tidak valid atau sudah berakhir. Silakan login ulang.",
+    };
+  }
+  const admin = session.user;
+  if (admin.username !== "admin" && admin.role !== "Administrator") {
+    return {
+      ok: false as const,
+      error: "Hanya administrator yang dapat mengelola pengguna.",
+    };
+  }
+  return { ok: true as const, session };
+}
+
+export const createUser = action({
+  args: {
+    adminToken: v.string(),
+    nama: v.string(),
+    username: v.string(),
+    password: v.string(),
+    role: v.string(),
+    nip: v.optional(v.string()),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const guard = await requireAdmin(ctx, args.adminToken);
+    if (guard.ok === false) return guard;
+
+    const username = args.username.trim().toLowerCase();
+    if (username.length < 3) {
+      return { ok: false, error: "Username minimal 3 karakter." };
+    }
+    if (!args.nama.trim()) {
+      return { ok: false, error: "Nama lengkap wajib diisi." };
+    }
+    if (args.password.length < 6) {
+      return { ok: false, error: "Password minimal 6 karakter." };
+    }
+
+    const existing: any = await ctx.runQuery(internal.auth.findUserByUsername, { username });
+    if (existing) {
+      return { ok: false, error: `Username "${username}" sudah digunakan.` };
+    }
+
+    const id: any = await ctx.runMutation(internal.auth.insertUserWithHash, {
+      nama: args.nama.trim(),
+      username,
+      role: args.role || "Operator Pelayanan",
+      nip: args.nip,
+      email: args.email,
+      status: "Aktif",
+      passwordHash: hashPassword(args.password),
+    });
+
+    const created: any = await ctx.runQuery(internal.auth.getUserForAuth, { username });
+    return { ok: true, id, user: publicUser(created) };
+  },
+});
+
+export const updateUser = action({
+  args: {
+    adminToken: v.string(),
+    targetUserId: v.id("users"),
+    nama: v.string(),
+    username: v.string(),
+    role: v.string(),
+    nip: v.optional(v.string()),
+    email: v.optional(v.string()),
+    password: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const guard = await requireAdmin(ctx, args.adminToken);
+    if (guard.ok === false) return guard;
+
+    const target: any = await ctx.runQuery(internal.auth.getUserById, {
+      userId: args.targetUserId,
+    });
+    if (!target) {
+      return { ok: false, error: "Pengguna tidak ditemukan." };
+    }
+
+    const username = args.username.trim().toLowerCase();
+    if (username.length < 3) {
+      return { ok: false, error: "Username minimal 3 karakter." };
+    }
+    if (!args.nama.trim()) {
+      return { ok: false, error: "Nama lengkap wajib diisi." };
+    }
+    if (args.password !== undefined && args.password.length > 0 && args.password.length < 6) {
+      return { ok: false, error: "Password minimal 6 karakter." };
+    }
+
+    // Username uniqueness (excluding the target itself)
+    if (username !== target.username) {
+      const existing: any = await ctx.runQuery(internal.auth.findUserByUsername, { username });
+      if (existing) {
+        return { ok: false, error: `Username "${username}" sudah digunakan.` };
+      }
+    }
+
+    await ctx.runMutation(internal.auth.updateUserFields, {
+      userId: args.targetUserId,
+      nama: args.nama.trim(),
+      username,
+      role: args.role,
+      nip: args.nip,
+      email: args.email,
+    });
+
+    if (args.password !== undefined && args.password.length > 0) {
+      await ctx.runMutation(internal.auth.setUserPasswordHash, {
+        userId: args.targetUserId,
+        passwordHash: hashPassword(args.password),
+      });
+    }
+
+    const updated: any = await ctx.runQuery(internal.auth.getUserById, {
+      userId: args.targetUserId,
+    });
+    return { ok: true, user: publicUser(updated) };
+  },
+});
+
+export const deleteUser = action({
+  args: {
+    adminToken: v.string(),
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const guard = await requireAdmin(ctx, args.adminToken);
+    if (guard.ok === false) return guard;
+
+    // Cannot delete yourself
+    if (guard.session.user._id === args.targetUserId) {
+      return { ok: false, error: "Anda tidak dapat menghapus akun Anda sendiri." };
+    }
+
+    const target: any = await ctx.runQuery(internal.auth.getUserById, {
+      userId: args.targetUserId,
+    });
+    if (!target) {
+      return { ok: false, error: "Pengguna tidak ditemukan." };
+    }
+
+    // Cannot delete the last administrator
+    const isTargetAdmin =
+      target.username === "admin" || target.role === "Administrator";
+    if (isTargetAdmin) {
+      const adminCount: number = await ctx.runQuery(internal.auth.countAdmins, {});
+      if (adminCount <= 1) {
+        return {
+          ok: false,
+          error: "Tidak dapat menghapus administrator terakhir.",
+        };
+      }
+    }
+
+    await ctx.runMutation(internal.auth.deleteUserRow, {
+      userId: args.targetUserId,
+    });
+    return { ok: true };
+  },
+});
