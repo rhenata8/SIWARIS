@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from './context/AppContext';
 import { useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
+import { PageSkeleton } from './components/PageSkeleton';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { SuratWarisPage } from './pages/SuratWarisPage';
 import { PewarisAhliWarisPage } from './pages/PewarisAhliWarisPage';
 import { ArsipDigitalPage } from './pages/ArsipDigitalPage';
-import { PencarianPage } from './pages/PencarianPage';
 import { LaporanPage } from './pages/LaporanPage';
 import { PenggunaPage } from './pages/PenggunaPage';
 import { AddSKWModal } from './components/AddSKWModal';
@@ -21,8 +21,12 @@ import { QRCodeModal } from './components/QRCodeModal';
 import { DocumentPreviewModal } from './components/DocumentPreviewModal';
 import { FormatSuratModal } from './components/FormatSuratModal';
 import { PublicVerificationModal } from './components/PublicVerificationModal';
+import { PageId } from './types';
 
 type AppRoute = 'app' | 'login' | 'register';
+
+/** Durasi skeleton saat pindah halaman (poin 9). */
+const PAGE_SKELETON_MS = 400;
 
 function getRouteFromPath(): { route: AppRoute } {
   const path = window.location.pathname.toLowerCase();
@@ -37,6 +41,26 @@ export const AppContent: React.FC = () => {
   const { user, isAuthReady } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [booted, setBooted] = useState<{ route: AppRoute }>(getRouteFromPath());
+
+  // Poin 9 — cache halaman yang sudah pernah dimuat: skeleton hanya muncul
+  // sekali per halaman per sesi. Ref dibaca saat render agar perpindahan
+  // ke halaman yang belum pernah dimuat langsung menampilkan skeleton
+  // (tidak ada kedipan halaman asli terlebih dahulu).
+  // skeletonRerender hanya pemicu re-render setelah cache diperbarui.
+  const loadedPagesRef = useRef<Set<PageId>>(new Set([activePage]));
+  const [, setSkeletonRerender] = useState(0);
+
+  useEffect(() => {
+    if (loadedPagesRef.current.has(activePage)) return;
+    const timer = window.setTimeout(() => {
+      loadedPagesRef.current.add(activePage);
+      setSkeletonRerender((v) => v + 1);
+    }, PAGE_SKELETON_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage]);
+
+  const showSkeleton = !loadedPagesRef.current.has(activePage);
 
   // Track path changes for /register (SPA-friendly, no extra deps)
   useEffect(() => {
@@ -54,12 +78,19 @@ export const AppContent: React.FC = () => {
     setBooted({ route: 'app' });
   };
 
-  // Global keyboard shortcuts (Ctrl+K to search)
+  // Global keyboard shortcuts (Ctrl+K → fokus search topbar;
+  // pencarian menyatu di Arsip Digital — poin 3)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setActivePage('pencarian');
+        const input = document.getElementById('swr-topbar-search-input') as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          input.select();
+        } else {
+          setActivePage('arsip');
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -76,8 +107,6 @@ export const AppContent: React.FC = () => {
         return <PewarisAhliWarisPage />;
       case 'arsip':
         return <ArsipDigitalPage />;
-      case 'pencarian':
-        return <PencarianPage />;
       case 'laporan':
         return <LaporanPage />;
       case 'pengguna':
@@ -114,7 +143,9 @@ export const AppContent: React.FC = () => {
             <Header
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             />
-            <main>{renderActivePage()}</main>
+            <main>
+              {showSkeleton ? <PageSkeleton /> : renderActivePage()}
+            </main>
 
             <footer
               style={{

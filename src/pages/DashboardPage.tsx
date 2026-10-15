@@ -25,7 +25,7 @@ export const DashboardPage: React.FC = () => {
     e.preventDefault();
     if (quickInput.trim()) {
       setSearchQuery(quickInput.trim());
-      setActivePage('pencarian');
+      setActivePage('arsip');
     }
   };
 
@@ -47,6 +47,7 @@ export const DashboardPage: React.FC = () => {
     <div className="page-container">
       {/* Welcome Banner */}
       <div
+        className="welcome-banner"
         style={{
           background: 'linear-gradient(135deg, #1e40af 0%, #0369a1 100%)',
           color: '#ffffff',
@@ -212,7 +213,7 @@ export const DashboardPage: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setSearchQuery(term);
-                  setActivePage('pencarian');
+                  setActivePage('arsip');
                 }}
                 style={{
                   background: '#f1f5f9',

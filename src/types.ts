@@ -55,6 +55,5 @@ export type PageId =
   | 'surat'
   | 'pewaris'
   | 'arsip'
-  | 'pencarian'
   | 'laporan'
   | 'pengguna';

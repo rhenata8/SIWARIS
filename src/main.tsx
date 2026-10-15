@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { ConvexProvider } from 'convex/react';
 import { convexClient, isConvexEnabled } from './services/convex';
 import './index.css';
@@ -37,6 +38,8 @@ const RootApp = () => {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <RootApp />
+    <ToastProvider>
+      <RootApp />
+    </ToastProvider>
   </React.StrictMode>
 );

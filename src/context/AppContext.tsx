@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from 'convex/react';
 import { ArchiveSKW, User, PageId, LetterFormat } from '../types';
 import { INITIAL_ARCHIVES, INITIAL_USERS } from '../data/initialData';
 import { convexClient, isConvexEnabled } from '../services/convex';
@@ -70,10 +71,95 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+interface LiveConvexSyncProps {
+  applyServerArchives: (rows: any[]) => void;
+  applyServerUsers: (rows: any[]) => void;
+  onSyncStateChange: (syncing: boolean) => void;
+}
+
+/**
+ * Live sync via reactive subscription — HARUS dirender di dalam
+ * <ConvexProvider>. useQuery menjaga subscription WebSocket aktif dan
+ * otomatis menerima setiap perubahan data dari server (<1 detik), termasuk
+ * perubahan yang dibuat device lain. Komponen ini tidak merender apa pun.
+ */
+const LiveConvexSync: React.FC<LiveConvexSyncProps> = ({
+  applyServerArchives,
+  applyServerUsers,
+  onSyncStateChange,
+}) => {
+  const rawArchives = useQuery(api.skw.getArchives, {});
+  const rawUsers = useQuery(api.users.getUsers, {});
+  const seededArchivesRef = useRef(false);
+  const seededUsersRef = useRef(false);
+
+  // Archives: dorong setiap hasil baru dari server ke state global
+  useEffect(() => {
+    if (rawArchives === undefined) return; // masih loading
+    if (rawArchives.length > 0) {
+      applyServerArchives(rawArchives);
+    } else if (!seededArchivesRef.current) {
+      // DB kosong — seed default sekali; hasilnya datang via subscription.
+      seededArchivesRef.current = true;
+      convexClient
+        ?.mutation(api.skw.seedInitialData, {})
+        .catch((e) => console.warn('Convex seed archives failed', e));
+    } else {
+      // Benar-benar kosong (mis. semua arsip dihapus di device lain).
+      applyServerArchives([]);
+    }
+  }, [rawArchives, applyServerArchives]);
+
+  // Users: dorong setiap hasil baru dari server ke state global
+  useEffect(() => {
+    if (rawUsers === undefined) return; // masih loading
+    if (rawUsers.length > 0) {
+      applyServerUsers(rawUsers);
+    } else if (!seededUsersRef.current) {
+      seededUsersRef.current = true;
+      convexClient
+        ?.mutation(api.users.seedUsers, {})
+        .catch((e) => console.warn('Convex seed users failed', e));
+    } else {
+      applyServerUsers([]);
+    }
+  }, [rawUsers, applyServerUsers]);
+
+  // isSyncing = true selama salah satu subscription masih loading
+  useEffect(() => {
+    onSyncStateChange(rawArchives === undefined || rawUsers === undefined);
+  }, [rawArchives, rawUsers, onSyncStateChange]);
+
+  return null;
+};
+
 const STORAGE_KEY_ARCHIVES = 'siwaris_archives_v1';
 const STORAGE_KEY_USERS = 'siwaris_users_v1';
 const STORAGE_KEY_CONVEX_URL = 'siwaris_convex_url';
 const STORAGE_KEY_LETTER_FORMAT = 'siwaris_letter_format_v1';
+
+/** Map a raw Convex archives doc to the frontend ArchiveSKW shape. */
+function mapConvexArchive(a: any): ArchiveSKW {
+  return {
+    _id: a._id,
+    idArsip: a.idArsip,
+    nomorSKW: a.nomorSKW,
+    namaPewaris: a.namaPewaris,
+    nikPewaris: a.nikPewaris,
+    tanggalSurat: a.tanggalSurat,
+    tanggalMeninggal: a.tanggalMeninggal,
+    jumlahAhliWaris: a.jumlahAhliWaris,
+    ahliWarisList: a.ahliWarisList || [],
+    alamat: a.alamat,
+    status: a.status,
+    catatan: a.catatan,
+    fileName: a.fileName,
+    fileUrl: a.fileUrl,
+    fileSize: a.fileSize,
+    tahun: a.tahun,
+    createdAt: a.createdAt,
+  };
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
@@ -188,69 +274,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [users]);
 
-  // Load from Convex backend if configured and available.
-  // Convex is authoritative — its data always overwrites localStorage.
-  const syncFromConvex = useCallback(async () => {
-    if (!convexClient) return;
-    try {
-      setIsSyncing(true);
-
-      // --- Archives ---
-      const convexArchives = await convexClient.query(api.skw.getArchives, {});
-      if (convexArchives && Array.isArray(convexArchives) && convexArchives.length > 0) {
-        const mapped: ArchiveSKW[] = convexArchives.map((a: any) => ({
-          _id: a._id,
-          idArsip: a.idArsip,
-          nomorSKW: a.nomorSKW,
-          namaPewaris: a.namaPewaris,
-          nikPewaris: a.nikPewaris,
-          tanggalSurat: a.tanggalSurat,
-          tanggalMeninggal: a.tanggalMeninggal,
-          jumlahAhliWaris: a.jumlahAhliWaris,
-          ahliWarisList: a.ahliWarisList || [],
-          alamat: a.alamat,
-          status: a.status,
-          catatan: a.catatan,
-          fileName: a.fileName,
-          fileUrl: a.fileUrl,
-          fileSize: a.fileSize,
-          tahun: a.tahun,
-          createdAt: a.createdAt,
-        }));
-        // Convex wins: replace any local state (including stale localStorage)
-        setArchives(mapped);
-      } else {
-        // DB empty — seed default data then re-fetch
-        await convexClient.mutation(api.skw.seedInitialData, {});
-        const recheck = await convexClient.query(api.skw.getArchives, {});
-        if (recheck && recheck.length > 0) {
-          setArchives(recheck as any);
-        }
-      }
-
-      // --- Users ---
-      const convexUsers = await convexClient.query(api.users.getUsers, {});
-      if (convexUsers && Array.isArray(convexUsers) && convexUsers.length > 0) {
-        setUsers(convexUsers as any);
-      } else {
-        await convexClient.mutation(api.users.seedUsers, {});
-        const recheckUsers = await convexClient.query(api.users.getUsers, {});
-        if (recheckUsers && recheckUsers.length > 0) {
-          setUsers(recheckUsers as any);
-        }
-      }
-    } catch (err) {
-      console.warn('Convex sync: using local cache as fallback', err);
-    } finally {
-      setIsSyncing(false);
-    }
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LIVE SYNC (realtime antar device).
+  // AppProvider selalu dirender di dalam <ConvexProvider> saat isConvexEnabled,
+  // jadi kita bisa memakai hook useQuery() dari convex/react: Convex menjaga
+  // subscription WebSocket aktif dan otomatis mendorong setiap perubahan data
+  // (<1 detik) ke SEMUA device. useQuery tidak boleh dipanggil tanpa
+  // ConvexProvider, makanya subscription diisolasi di komponen <LiveConvexSync>
+  // yang hanya dirender saat backend aktif. Jika !isConvexEnabled, data dummy
+  // offline (initialData/localStorage) tetap dipakai (perilaku lama).
+  // ─────────────────────────────────────────────────────────────────────────────
+  const applyServerArchives = useCallback((rows: any[]) => {
+    const serverRows: ArchiveSKW[] = rows.map(mapConvexArchive);
+    setArchives((prev) => {
+      // Pertahankan optimistic "temp-" entries yang belum digantikan row
+      // server (idArsip masih placeholder, jadi tidak mungkin bentrok).
+      // Semua row non-temp diganti barusan dari server — row server selalu
+      // menang, tidak ada data ganda.
+      const pendingOptimistic = prev.filter(
+        (p) => typeof p._id === 'string' && p._id.startsWith('temp-')
+      );
+      return [...pendingOptimistic, ...serverRows];
+    });
   }, []);
 
-  useEffect(() => {
-    if (isConvexConfigured && convexClient) {
-      syncFromConvex();
-    }
-  }, [isConvexConfigured, syncFromConvex]);
+  const applyServerUsers = useCallback((rows: any[]) => {
+    const serverRows = rows as User[];
+    setUsers((prev) => {
+      // Pertahankan optimistic "usr-" entries lokal yang belum ada
+      // padanannya di server (dicocokkan via username).
+      const pendingOptimistic = prev.filter(
+        (p) =>
+          typeof p._id === 'string' &&
+          p._id.startsWith('usr-') &&
+          !serverRows.some((s) => s.username === p.username)
+      );
+      return [...pendingOptimistic, ...serverRows];
+    });
+  }, []);
+
+  const handleSyncStateChange = useCallback((syncing: boolean) => {
+    setIsSyncing(syncing);
+  }, []);
+
+  // Live sync aktif hanya saat backend Convex tersedia; <LiveConvexSync>
+  // memakai useQuery() sehingga wajib berada di dalam <ConvexProvider>.
+  // Jika !isConvexEnabled, data dummy offline tetap dipakai (perilaku lama).
 
   // REAL COMPUTED STATS: 100% based on real database records!
   const totalSKW = archives.length;
@@ -364,9 +433,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
-        setArchives((prev) =>
-          prev.map((a) => (a._id === tempId ? realArch : a))
-        );
+        // Replace the optimistic placeholder with real server data.
+        // Dedupe by _id: jika subscription sudah lebih dulu mendorong row
+        // server ini, jangan tambahkan dua kali (row server selalu menang).
+        setArchives((prev) => [
+          realArch,
+          ...prev.filter((a) => a._id !== tempId && a._id !== result.id),
+        ]);
         return realArch;
       } catch (e) {
         console.error('Failed to sync new archive to Convex', e);
@@ -529,6 +602,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSyncing,
       }}
     >
+      {/* Live sync subscription (reactive) — null-render, hanya jalan saat
+          Convex aktif karena useQuery butuh <ConvexProvider> di atasnya. */}
+      {isConvexEnabled && convexClient && (
+        <LiveConvexSync
+          applyServerArchives={applyServerArchives}
+          applyServerUsers={applyServerUsers}
+          onSyncStateChange={handleSyncStateChange}
+        />
+      )}
       {children}
     </AppContext.Provider>
   );

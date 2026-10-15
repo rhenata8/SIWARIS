@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { AhliWaris } from '../types';
 import { X, Plus, Trash2, Upload, FileText, CheckCircle2 } from 'lucide-react';
 
 export const AddSKWModal: React.FC = () => {
   const { isAddModalOpen, setIsAddModalOpen, addArchive, setActivePage, archives } = useApp();
+  const { toast } = useToast();
 
   const nextSeq = 124 + archives.length;
   const defaultNomor = `470/${nextSeq}/SKW/2026`;
@@ -148,9 +150,11 @@ export const AddSKWModal: React.FC = () => {
       resetForm();
       setIsAddModalOpen(false);
       setActivePage('surat');
+      toast.success('Arsip SKW berhasil disimpan');
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err?.message || 'Terjadi kesalahan saat menyimpan arsip.');
+      toast.error(err?.message || 'Gagal menyimpan arsip SKW.');
     } finally {
       setIsSubmitting(false);
     }
@@ -362,7 +366,7 @@ export const AddSKWModal: React.FC = () => {
                 Unggah Dokumen Berkas Digital
               </div>
               <div className="form-group">
-                <label className="form-label">Unggah Berkas Asli SKW (Opsional — PDF/JPG/PNG)</label>
+                <label className="form-label">Unggah Berkas Scan (Opsional — PDF/JPG/PNG)</label>
                 <div
                   style={{
                     border: '2px dashed #93c5fd',
