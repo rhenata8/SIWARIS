@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { AhliWaris } from '../types';
 import { X, Plus, Trash2, Upload, FileText, CheckCircle2 } from 'lucide-react';
@@ -28,6 +28,37 @@ export const AddSKWModal: React.FC = () => {
 
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = useCallback(() => {
+    const seq = 124 + archives.length;
+    setNomorSKW(`470/${seq}/SKW/2026`);
+    setTanggalSurat(new Date().toISOString().split('T')[0]);
+    setNamaPewaris('');
+    setNikPewaris('');
+    setTanggalMeninggal('');
+    setAlamat('Kelurahan Sumbertaman, Kec. Wonoasih, Kota Probolinggo');
+    setStatus('Tersimpan');
+    setCatatan('');
+    setFileName('');
+    setFileSize('');
+    setAhliWarisList([
+      { nama: '', hubungan: 'Istri', nik: '' },
+      { nama: '', hubungan: 'Anak Kandung', nik: '' },
+    ]);
+    setErrorMsg('');
+  }, [archives.length]);
+
+  // Clean reset every time the modal is opened
+  useEffect(() => {
+    if (isAddModalOpen) {
+      resetForm();
+    }
+  }, [isAddModalOpen, resetForm]);
+
+  const handleClose = () => {
+    resetForm();
+    setIsAddModalOpen(false);
+  };
 
   if (!isAddModalOpen) return null;
 
@@ -59,8 +90,22 @@ export const AddSKWModal: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!nomorSKW.trim() || !namaPewaris.trim() || !tanggalSurat || !tanggalMeninggal) {
+    const cleanNomor = nomorSKW.trim();
+    const cleanNama = namaPewaris.trim();
+
+    if (!cleanNomor || !cleanNama || !tanggalSurat || !tanggalMeninggal) {
       setErrorMsg('Mohon lengkapi semua data utama yang bertanda bintang (*).');
+      return;
+    }
+
+    // Check duplicate nomorSKW locally
+    const existing = archives.find(
+      (a) => a.nomorSKW.trim().toLowerCase() === cleanNomor.toLowerCase()
+    );
+    if (existing) {
+      setErrorMsg(
+        `Nomor SKW "${cleanNomor}" sudah terdaftar pada arsip ${existing.idArsip} (Pewaris: ${existing.namaPewaris}). Mohon gunakan nomor SKW yang benar.`
+      );
       return;
     }
 
@@ -73,9 +118,9 @@ export const AddSKWModal: React.FC = () => {
     try {
       setIsSubmitting(true);
       await addArchive({
-        nomorSKW: nomorSKW.trim(),
+        nomorSKW: cleanNomor,
         tanggalSurat,
-        namaPewaris: namaPewaris.trim(),
+        namaPewaris: cleanNama,
         nikPewaris: nikPewaris.trim() || '3574' + Math.floor(100000000000 + Math.random() * 900000000000),
         tanggalMeninggal,
         jumlahAhliWaris: validAhli.length,
@@ -83,29 +128,30 @@ export const AddSKWModal: React.FC = () => {
         alamat: alamat.trim(),
         status,
         catatan: catatan.trim() || 'Arsip tersimpan di Kelurahan Sumbertaman',
-        fileName: fileName || `SKW_${namaPewaris.replace(/\s+/g, '_')}_Scan.pdf`,
+        fileName: fileName || `SKW_${cleanNama.replace(/\s+/g, '_')}_Scan.pdf`,
         fileSize: fileSize || '1.1 MB',
       });
 
+      resetForm();
       setIsAddModalOpen(false);
       setActivePage('surat');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setErrorMsg('Terjadi kesalahan saat menyimpan arsip.');
+      setErrorMsg(err?.message || 'Terjadi kesalahan saat menyimpan arsip.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setIsAddModalOpen(false)}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-dialog large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>
             <FileText size={20} color="#2563eb" />
             Tambah Surat Keterangan Waris (SKW)
           </h3>
-          <button className="modal-close-btn" onClick={() => setIsAddModalOpen(false)}>
+          <button className="modal-close-btn" onClick={handleClose}>
             <X size={20} />
           </button>
         </div>
@@ -356,7 +402,7 @@ export const AddSKWModal: React.FC = () => {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={handleClose}
               disabled={isSubmitting}
             >
               Batal

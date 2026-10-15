@@ -131,11 +131,25 @@ export const createArchive = mutation({
     tahun: v.number(),
   },
   handler: async (ctx, args) => {
+    // Validate uniqueness of nomorSKW
+    const cleanNomor = args.nomorSKW.trim();
+    const existing = await ctx.db
+      .query("archives")
+      .filter((q) => q.eq(q.field("nomorSKW"), cleanNomor))
+      .first();
+
+    if (existing) {
+      throw new Error(
+        `Nomor SKW "${cleanNomor}" sudah terdaftar pada arsip ${existing.idArsip} (Pewaris: ${existing.namaPewaris}).`
+      );
+    }
+
     // Generate unique ID atomically on the server
     const idArsip = await generateUniqueIdArsip(ctx, args.tahun);
 
     const id = await ctx.db.insert("archives", {
       ...args,
+      nomorSKW: cleanNomor,
       idArsip,
       createdAt: Date.now(),
     });
@@ -171,6 +185,21 @@ export const updateArchive = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args;
+
+    if (data.nomorSKW) {
+      const cleanNomor = data.nomorSKW.trim();
+      const existing = await ctx.db
+        .query("archives")
+        .filter((q) => q.eq(q.field("nomorSKW"), cleanNomor))
+        .first();
+      if (existing && existing._id !== id) {
+        throw new Error(
+          `Nomor SKW "${cleanNomor}" sudah terdaftar pada arsip ${existing.idArsip} (Pewaris: ${existing.namaPewaris}).`
+        );
+      }
+      data.nomorSKW = cleanNomor;
+    }
+
     await ctx.db.patch(id, data);
   },
 });
@@ -190,37 +219,42 @@ export const generateUploadUrl = mutation({
 
 /**
  * Deduplicate archives in the database.
- * For each group of records sharing the same idArsip, keeps the OLDEST one
- * (smallest createdAt) and deletes the rest.
+ * Detects duplicates by both idArsip and nomorSKW.
+ * For each group, keeps the OLDEST record (smallest createdAt) and deletes the rest.
  * Returns the list of deleted _ids.
  */
 export const deduplicateArchives = mutation({
   handler: async (ctx) => {
     const all = await ctx.db.query("archives").order("asc").collect();
 
-    // Group by idArsip
-    const groups = new Map<string, typeof all>();
-    for (const a of all) {
-      if (!groups.has(a.idArsip)) {
-        groups.set(a.idArsip, []);
-      }
-      groups.get(a.idArsip)!.push(a);
-    }
+    // Sort ascending by createdAt — keep the oldest record (original submission)
+    all.sort((a, b) => a.createdAt - b.createdAt);
 
     const deleted: string[] = [];
+    const seenNomor = new Map<string, (typeof all)[0]>();
+    const seenIdArsip = new Map<string, (typeof all)[0]>();
 
-    for (const [idArsip, records] of groups) {
-      if (records.length <= 1) continue;
+    for (const a of all) {
+      const cleanNomor = a.nomorSKW.trim().toLowerCase();
+      const cleanId = a.idArsip.trim().toLowerCase();
 
-      // Sort ascending by createdAt — keep the oldest (index 0)
-      records.sort((a, b) => a.createdAt - b.createdAt);
-
-      for (let i = 1; i < records.length; i++) {
-        await ctx.db.delete(records[i]._id);
-        deleted.push(records[i]._id);
+      if (seenNomor.has(cleanNomor)) {
+        // Duplicate nomorSKW!
+        await ctx.db.delete(a._id);
+        deleted.push(a._id);
         console.log(
-          `Deleted duplicate idArsip=${idArsip} _id=${records[i]._id} (kept _id=${records[0]._id})`
+          `Deleted duplicate nomorSKW=${a.nomorSKW} _id=${a._id} (kept _id=${seenNomor.get(cleanNomor)!._id})`
         );
+      } else if (seenIdArsip.has(cleanId)) {
+        // Duplicate idArsip!
+        await ctx.db.delete(a._id);
+        deleted.push(a._id);
+        console.log(
+          `Deleted duplicate idArsip=${a.idArsip} _id=${a._id} (kept _id=${seenIdArsip.get(cleanId)!._id})`
+        );
+      } else {
+        seenNomor.set(cleanNomor, a);
+        seenIdArsip.set(cleanId, a);
       }
     }
 

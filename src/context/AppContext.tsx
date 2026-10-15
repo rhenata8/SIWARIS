@@ -272,6 +272,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addArchive = async (data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => {
+    const cleanNomor = data.nomorSKW.trim();
+    const existing = archives.find(
+      (a) => a.nomorSKW.trim().toLowerCase() === cleanNomor.toLowerCase()
+    );
+    if (existing) {
+      throw new Error(
+        `Nomor SKW "${cleanNomor}" sudah terdaftar pada arsip ${existing.idArsip} (Pewaris: ${existing.namaPewaris}).`
+      );
+    }
+
     const year = data.tanggalSurat ? new Date(data.tanggalSurat).getFullYear() : 2026;
     const tempId = 'temp-' + Date.now();
     const createdAt = Date.now();
