@@ -75,9 +75,39 @@ export const getStats = query({
   },
 });
 
+/**
+ * Generate unique idArsip server-side (atomic).
+ * Convex mutations run serially — no race condition possible.
+ */
+async function generateUniqueIdArsip(
+  ctx: { db: any },
+  tahun: number
+): Promise<string> {
+  // Query all archives for this year via index
+  const inYear = await ctx.db
+    .query("archives")
+    .withIndex("by_tahun", (q: any) => q.eq("tahun", tahun))
+    .collect();
+
+  // Find the highest sequence number used for this year
+  let maxSeq = 0;
+  for (const a of inYear) {
+    const parts: string[] = a.idArsip.split("-");
+    if (parts.length === 4 && parts[2] === String(tahun)) {
+      const seq = parseInt(parts[3], 10);
+      if (!isNaN(seq) && seq > maxSeq) {
+        maxSeq = seq;
+      }
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  return `SW-SBT-${tahun}-${String(nextSeq).padStart(4, "0")}`;
+}
+
 export const createArchive = mutation({
   args: {
-    idArsip: v.string(),
+    // idArsip is now generated server-side — NOT accepted from client
     nomorSKW: v.string(),
     namaPewaris: v.string(),
     nikPewaris: v.string(),
@@ -101,10 +131,16 @@ export const createArchive = mutation({
     tahun: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("archives", {
+    // Generate unique ID atomically on the server
+    const idArsip = await generateUniqueIdArsip(ctx, args.tahun);
+
+    const id = await ctx.db.insert("archives", {
       ...args,
+      idArsip,
       createdAt: Date.now(),
     });
+
+    return { id, idArsip };
   },
 });
 
@@ -149,6 +185,83 @@ export const deleteArchive = mutation({
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Deduplicate archives in the database.
+ * For each group of records sharing the same idArsip, keeps the OLDEST one
+ * (smallest createdAt) and deletes the rest.
+ * Returns the list of deleted _ids.
+ */
+export const deduplicateArchives = mutation({
+  handler: async (ctx) => {
+    const all = await ctx.db.query("archives").order("asc").collect();
+
+    // Group by idArsip
+    const groups = new Map<string, typeof all>();
+    for (const a of all) {
+      if (!groups.has(a.idArsip)) {
+        groups.set(a.idArsip, []);
+      }
+      groups.get(a.idArsip)!.push(a);
+    }
+
+    const deleted: string[] = [];
+
+    for (const [idArsip, records] of groups) {
+      if (records.length <= 1) continue;
+
+      // Sort ascending by createdAt — keep the oldest (index 0)
+      records.sort((a, b) => a.createdAt - b.createdAt);
+
+      for (let i = 1; i < records.length; i++) {
+        await ctx.db.delete(records[i]._id);
+        deleted.push(records[i]._id);
+        console.log(
+          `Deleted duplicate idArsip=${idArsip} _id=${records[i]._id} (kept _id=${records[0]._id})`
+        );
+      }
+    }
+
+    return { deleted: deleted.length, ids: deleted };
+  },
+});
+
+/**
+ * Re-assign correct sequential idArsip to all archives after deduplication.
+ * Archives are sorted by createdAt ASC within each year,
+ * then assigned SW-SBT-{year}-{seq} sequentially starting from 0001.
+ */
+export const reassignArchiveIds = mutation({
+  handler: async (ctx) => {
+    const all = await ctx.db.query("archives").order("asc").collect();
+
+    // Group by tahun, sort each group by createdAt asc
+    const byYear = new Map<number, typeof all>();
+    for (const a of all) {
+      if (!byYear.has(a.tahun)) byYear.set(a.tahun, []);
+      byYear.get(a.tahun)!.push(a);
+    }
+
+    const updated: Array<{ _id: string; oldId: string; newId: string }> = [];
+
+    for (const [year, records] of byYear) {
+      records.sort((a, b) => a.createdAt - b.createdAt);
+      for (let i = 0; i < records.length; i++) {
+        const newId = `SW-SBT-${year}-${String(i + 1).padStart(4, "0")}`;
+        if (records[i].idArsip !== newId) {
+          await ctx.db.patch(records[i]._id, { idArsip: newId });
+          updated.push({
+            _id: records[i]._id,
+            oldId: records[i].idArsip,
+            newId,
+          });
+        }
+      }
+    }
+
+    return { updated: updated.length, changes: updated };
   },
 });
 

@@ -188,12 +188,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [users]);
 
-  // Load from Convex backend if configured and available
+  // Load from Convex backend if configured and available.
+  // Convex is authoritative — its data always overwrites localStorage.
   const syncFromConvex = useCallback(async () => {
     if (!convexClient) return;
     try {
       setIsSyncing(true);
-      // Fetch archives from Convex
+
+      // --- Archives ---
       const convexArchives = await convexClient.query(api.skw.getArchives, {});
       if (convexArchives && Array.isArray(convexArchives) && convexArchives.length > 0) {
         const mapped: ArchiveSKW[] = convexArchives.map((a: any) => ({
@@ -215,9 +217,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           tahun: a.tahun,
           createdAt: a.createdAt,
         }));
+        // Convex wins: replace any local state (including stale localStorage)
         setArchives(mapped);
       } else {
-        // Seed default initial data into Convex if database is empty
+        // DB empty — seed default data then re-fetch
         await convexClient.mutation(api.skw.seedInitialData, {});
         const recheck = await convexClient.query(api.skw.getArchives, {});
         if (recheck && recheck.length > 0) {
@@ -225,7 +228,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Fetch users from Convex
+      // --- Users ---
       const convexUsers = await convexClient.query(api.users.getUsers, {});
       if (convexUsers && Array.isArray(convexUsers) && convexUsers.length > 0) {
         setUsers(convexUsers as any);
@@ -237,7 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     } catch (err) {
-      console.warn('Convex sync info: Using local cache as fallback', err);
+      console.warn('Convex sync: using local cache as fallback', err);
     } finally {
       setIsSyncing(false);
     }
@@ -270,34 +273,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addArchive = async (data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => {
     const year = data.tanggalSurat ? new Date(data.tanggalSurat).getFullYear() : 2026;
-    
-    // Find highest existing sequence for the year to guarantee uniqueness
-    const existingNums = archives
-      .map((a) => {
-        const parts = a.idArsip.split('-');
-        return parts.length === 4 && parts[2] === String(year) ? parseInt(parts[3], 10) : 0;
-      })
-      .filter((n) => !isNaN(n));
-    const maxNum = existingNums.length > 0 ? Math.max(...existingNums, archives.length) : archives.length;
-    const nextSeq = maxNum + 1;
-    const idArsip = `SW-SBT-${year}-${String(nextSeq).padStart(4, '0')}`;
+    const tempId = 'temp-' + Date.now();
+    const createdAt = Date.now();
 
-    const newArch: ArchiveSKW = {
+    // Optimistic placeholder with temp ID (will be replaced after server responds)
+    const optimisticArch: ArchiveSKW = {
       ...data,
-      _id: 'arch-' + Date.now(),
-      idArsip,
+      _id: tempId,
+      idArsip: `SW-SBT-${year}-????`, // placeholder
       tahun: year,
-      createdAt: Date.now(),
+      createdAt,
     };
+    setArchives((prev) => [optimisticArch, ...prev]);
 
-    // Optimistic state update
-    setArchives((prev) => [newArch, ...prev]);
-
-    // Push to Convex backend if client active
     if (convexClient && isConvexConfigured) {
       try {
-        await convexClient.mutation(api.skw.createArchive, {
-          idArsip,
+        // Server generates the unique idArsip atomically — no race condition
+        const result = await convexClient.mutation(api.skw.createArchive, {
           nomorSKW: data.nomorSKW,
           namaPewaris: data.namaPewaris,
           nikPewaris: data.nikPewaris,
@@ -313,12 +305,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fileSize: data.fileSize,
           tahun: year,
         });
+
+        // Replace the optimistic placeholder with real server data
+        const realArch: ArchiveSKW = {
+          ...data,
+          _id: result.id,
+          idArsip: result.idArsip,
+          tahun: year,
+          createdAt,
+        };
+        setArchives((prev) =>
+          prev.map((a) => (a._id === tempId ? realArch : a))
+        );
+        return realArch;
       } catch (e) {
         console.error('Failed to sync new archive to Convex', e);
+        // Remove the failed optimistic entry
+        setArchives((prev) => prev.filter((a) => a._id !== tempId));
+        throw e;
       }
     }
 
-    return newArch;
+    // Offline mode: generate local ID (best-effort, no conflict guarantee)
+    const existingNums = archives
+      .map((a) => {
+        const parts = a.idArsip.split('-');
+        return parts.length === 4 && parts[2] === String(year) ? parseInt(parts[3], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+    const nextSeq = maxNum + 1;
+    const idArsip = `SW-SBT-${year}-${String(nextSeq).padStart(4, '0')}`;
+    const finalArch: ArchiveSKW = { ...optimisticArch, idArsip };
+    setArchives((prev) => prev.map((a) => (a._id === tempId ? finalArch : a)));
+    return finalArch;
   };
 
   const updateArchive = async (id: string, updates: Partial<ArchiveSKW>) => {
