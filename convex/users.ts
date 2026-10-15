@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 
 export const getUsers = query({
   handler: async (ctx) => {
@@ -9,6 +9,35 @@ export const getUsers = query({
       const { passwordHash, ...safe } = u;
       return safe;
     });
+  },
+});
+
+/**
+ * SIWARIS v2.2 — Admin-only user listing.
+ * Validates the session token inline (queries cannot call actions) and
+ * returns users without passwordHash.
+ */
+export const listUsers = query({
+  args: { adminToken: v.string() },
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.adminToken))
+      .first();
+    if (!session || session.expiresAt < Date.now()) {
+      throw new ConvexError("Sesi tidak valid atau sudah berakhir. Silakan login ulang.");
+    }
+    const me = await ctx.db.get(session.userId);
+    if (!me || me.status !== "Aktif" || (me.username !== "admin" && me.role !== "Administrator")) {
+      throw new ConvexError("Hanya administrator yang dapat melihat daftar pengguna.");
+    }
+    const users = await ctx.db.query("users").collect();
+    return users
+      .map((u) => {
+        const { passwordHash, ...safe } = u;
+        return safe;
+      })
+      .sort((a, b) => a.createdAt - b.createdAt);
   },
 });
 

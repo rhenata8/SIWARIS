@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { User } from '../types';
-import { Settings, UserPlus, CheckCircle, RotateCcw, X, KeyRound, LockKeyhole } from 'lucide-react';
+import { Settings, UserPlus, CheckCircle, RotateCcw, X, KeyRound, LockKeyhole, Pencil, Trash2 } from 'lucide-react';
 
 export const PenggunaPage: React.FC = () => {
   const { users, toggleUserStatus, resetToDefault } = useApp();
-  const { registerUser, changeUserPassword, changeOwnPassword, user: currentUser, isAdmin } = useAuth();
+  const {
+    changeUserPassword,
+    changeOwnPassword,
+    createUser,
+    updateUser,
+    deleteUser,
+    user: currentUser,
+    isAdmin,
+  } = useAuth();
+  const { toast, confirmDialog } = useToast();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   // Form states
@@ -19,6 +29,39 @@ export const PenggunaPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // SIWARIS v2.2 — Edit user (Ubah) state
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [editNama, setEditNama] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editRole, setEditRole] = useState('Operator Pelayanan');
+  const [editNip, setEditNip] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editErrorMsg, setEditErrorMsg] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Jumlah administrator (username "admin" atau role "Administrator")
+  const adminCount = users.filter(
+    (u) => u.username === 'admin' || u.role === 'Administrator'
+  ).length;
+
+  const canManage = (u: User) =>
+    isAdmin && Boolean(u._id) && !u._id!.startsWith('usr-');
+
+  // Tombol hapus dinonaktifkan untuk diri sendiri dan administrator terakhir
+  const deleteDisabledReason = (u: User): string | null => {
+    if (!canManage(u)) return 'Hanya administrator yang dapat menghapus pengguna.';
+    if (currentUser && u._id === (currentUser as any)._id) {
+      return 'Anda tidak dapat menghapus akun Anda sendiri.';
+    }
+    const isTargetAdmin = u.username === 'admin' || u.role === 'Administrator';
+    if (isTargetAdmin && adminCount <= 1) {
+      return 'Administrator terakhir tidak dapat dihapus.';
+    }
+    return null;
+  };
 
   // Reset password (admin) per baris pengguna
   const [pwTarget, setPwTarget] = useState<User | null>(null);
@@ -148,9 +191,6 @@ export const PenggunaPage: React.FC = () => {
     }
   };
 
-  const canResetPw = (u: User) =>
-    isAdmin && Boolean(u._id) && !u._id!.startsWith('usr-');
-
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -168,7 +208,7 @@ export const PenggunaPage: React.FC = () => {
     }
     try {
       setIsSubmitting(true);
-      await registerUser({
+      await createUser({
         nama: nama.trim(),
         username: username.trim(),
         password,
@@ -176,6 +216,7 @@ export const PenggunaPage: React.FC = () => {
         nip: nip.trim() || undefined,
         email: email.trim() || undefined,
       });
+      toast.success(`Pengguna @${username.trim().toLowerCase()} berhasil ditambahkan.`);
       setNama('');
       setUsername('');
       setPassword('');
@@ -184,9 +225,87 @@ export const PenggunaPage: React.FC = () => {
       setEmail('');
       setIsAddUserOpen(false);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Gagal menambahkan pengguna.');
+      const msg = err?.message || 'Gagal menambahkan pengguna.';
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // SIWARIS v2.2 — Ubah pengguna
+  const openEditUser = (u: User) => {
+    setEditTarget(u);
+    setEditNama(u.nama);
+    setEditUsername(u.username);
+    setEditRole(u.role);
+    setEditNip(u.nip || '');
+    setEditEmail(u.email || '');
+    setEditPassword('');
+    setEditErrorMsg('');
+    setIsEditUserOpen(true);
+  };
+
+  const closeEditUser = () => {
+    setEditTarget(null);
+    setEditNama('');
+    setEditUsername('');
+    setEditRole('Operator Pelayanan');
+    setEditNip('');
+    setEditEmail('');
+    setEditPassword('');
+    setEditErrorMsg('');
+    setIsEditUserOpen(false);
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditErrorMsg('');
+    if (!editTarget || !editTarget._id) return;
+    if (!editNama.trim() || !editUsername.trim()) {
+      setEditErrorMsg('Nama dan username wajib diisi.');
+      return;
+    }
+    if (editPassword && editPassword.length < 6) {
+      setEditErrorMsg('Password minimal 6 karakter (kosongkan jika tidak diubah).');
+      return;
+    }
+    try {
+      setEditSubmitting(true);
+      await updateUser(editTarget._id, {
+        nama: editNama.trim(),
+        username: editUsername.trim(),
+        role: editRole,
+        nip: editNip.trim() || undefined,
+        email: editEmail.trim() || undefined,
+        password: editPassword || undefined,
+      });
+      toast.success(`Data pengguna @${editUsername.trim().toLowerCase()} berhasil diperbarui.`);
+      closeEditUser();
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal mengubah data pengguna.';
+      setEditErrorMsg(msg);
+      toast.error(msg);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  // SIWARIS v2.2 — Hapus pengguna (in-app confirm + toast)
+  const handleDeleteUser = async (u: User) => {
+    if (!u._id) return;
+    const ok = await confirmDialog({
+      title: 'Hapus Pengguna',
+      message: `Yakin ingin menghapus akun @${u.username} (${u.nama})? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: 'Hapus',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteUser(u._id);
+      toast.success(`Pengguna @${u.username} berhasil dihapus.`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menghapus pengguna.');
     }
   };
 
@@ -212,17 +331,29 @@ export const PenggunaPage: React.FC = () => {
             </button>
             <button
               className="btn btn-secondary btn-sm"
-              onClick={() => {
-                if (confirm('Reset semua data kembali ke default prototype?')) {
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: 'Reset Data Demo',
+                  message: 'Reset semua data kembali ke default prototype? Data saat ini akan ditimpa.',
+                  confirmLabel: 'Reset',
+                  danger: true,
+                });
+                if (ok) {
                   resetToDefault();
+                  toast.info('Data berhasil direset ke default.');
                 }
               }}
               title="Reset data ke default"
             >
               <RotateCcw size={14} /> Reset Data Demo
             </button>
-            <button className="btn btn-primary" onClick={() => setIsAddUserOpen(true)} disabled={!isAdmin}>
-              <UserPlus size={16} /> Tambah Staf Baru
+            <button
+              className="btn btn-primary"
+              onClick={() => setIsAddUserOpen(true)}
+              disabled={!isAdmin}
+              title={isAdmin ? 'Tambah pengguna baru' : 'Hanya administrator dapat menambah pengguna'}
+            >
+              <UserPlus size={16} /> Tambah Pengguna
             </button>
           </div>
         </div>
@@ -296,21 +427,45 @@ export const PenggunaPage: React.FC = () => {
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                      {canResetPw(u) && (
-                        <button
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => openPwModal(u)}
-                          title={`Reset password @${u.username}`}
-                        >
-                          <KeyRound size={14} /> Reset Password
-                        </button>
+                      {canManage(u) && (
+                        <>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => openEditUser(u)}
+                            title={`Ubah data @${u.username}`}
+                          >
+                            <Pencil size={14} /> Ubah
+                          </button>
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => openPwModal(u)}
+                            title={`Reset password @${u.username}`}
+                          >
+                            <KeyRound size={14} /> Reset Password
+                          </button>
+                          <button
+                            className={`btn btn-sm ${u.status === 'Aktif' ? 'btn-secondary' : 'btn-primary'}`}
+                            onClick={() => toggleUserStatus(u._id || u.username)}
+                            title={u.status === 'Aktif' ? 'Nonaktifkan akun' : 'Aktifkan akun'}
+                          >
+                            {u.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}
+                          </button>
+                          {(() => {
+                            const reason = deleteDisabledReason(u);
+                            return (
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => !reason && handleDeleteUser(u)}
+                                disabled={Boolean(reason)}
+                                title={reason || `Hapus @${u.username}`}
+                              >
+                                <Trash2 size={14} /> Hapus
+                              </button>
+                            );
+                          })()}
+                        </>
                       )}
-                      <button
-                        className={`btn btn-sm ${u.status === 'Aktif' ? 'btn-secondary' : 'btn-primary'}`}
-                        onClick={() => toggleUserStatus(u._id || u.username)}
-                      >
-                        {u.status === 'Aktif' ? 'Nonaktifkan' : 'Aktifkan'}
-                      </button>
+                      {!canManage(u) && <span style={{ fontSize: 12, color: '#94a3b8' }}>Read-only</span>}
                     </div>
                   </td>
                 </tr>
@@ -650,6 +805,131 @@ export const PenggunaPage: React.FC = () => {
                 >
                   <LockKeyhole size={16} />
                   {selfSubmitting ? 'Menyimpan…' : 'Simpan Password Baru'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ubah Pengguna (SIWARIS v2.2) */}
+      {isEditUserOpen && editTarget && (
+        <div className="modal-overlay" onClick={() => !editSubmitting && closeEditUser()}>
+          <div className="modal-dialog small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                <Pencil size={20} color="#2563eb" /> Ubah Pengguna @{editTarget.username}
+              </h3>
+              <button
+                className="modal-close-btn"
+                onClick={() => !editSubmitting && closeEditUser()}
+                type="button"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUser}>
+              <div className="modal-body">
+                {editErrorMsg && (
+                  <div className="notice-box" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#b91c1c' }}>
+                    {editErrorMsg}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">
+                    Nama Lengkap <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Nama beserta gelar"
+                    value={editNama}
+                    onChange={(e) => setEditNama(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Username Login <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="contoh: kasi_pelayanan"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">NIP (Nomor Induk Pegawai)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="19800101 200501 1 001"
+                    value={editNip}
+                    onChange={(e) => setEditNip(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Peran / Jabatan <span className="required">*</span>
+                  </label>
+                  <select
+                    className="form-select"
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                  >
+                    <option value="Administrator">Administrator</option>
+                    <option value="Operator Pelayanan">Operator Pelayanan</option>
+                    <option value="Sekretaris Kelurahan">Sekretaris Kelurahan</option>
+                    <option value="Lurah Sumbertaman">Lurah Sumbertaman (Pimpinan)</option>
+                    <option value="Kasi Pemerintahan">Kasi Pemerintahan</option>
+                    <option value="Kasi Trantib">Kasi Ketentraman & Ketertiban</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Email Dinas</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    placeholder="nama@probolinggokota.go.id"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Password Baru (opsional)</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Kosongkan jika tidak ingin mengubah password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    minLength={6}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeEditUser}
+                  disabled={editSubmitting}
+                >
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                  <Pencil size={16} />
+                  {editSubmitting ? 'Menyimpan…' : 'Simpan Perubahan'}
                 </button>
               </div>
             </form>

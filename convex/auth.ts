@@ -139,6 +139,51 @@ export const setUserPasswordHash = internalMutation({
   },
 });
 
+export const updateUserFields = internalMutation({
+  args: {
+    userId: v.id("users"),
+    nama: v.optional(v.string()),
+    username: v.optional(v.string()),
+    role: v.optional(v.string()),
+    nip: v.optional(v.string()),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...fields } = args;
+    // Drop undefined keys so optional fields are only patched when provided
+    const patch: Record<string, any> = {};
+    for (const [k, val] of Object.entries(fields)) {
+      if (val !== undefined) patch[k] = val;
+    }
+    await ctx.db.patch(userId, patch);
+    return true;
+  },
+});
+
+export const countAdmins = internalQuery({
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter(
+      (u) => u.username === "admin" || u.role === "Administrator"
+    ).length;
+  },
+});
+
+export const deleteUserRow = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Clean up the user's sessions so no stale token can reference them
+    const allSessions = await ctx.db.query("sessions").collect();
+    for (const s of allSessions) {
+      if (s.userId === args.userId) {
+        await ctx.db.delete(s._id);
+      }
+    }
+    await ctx.db.delete(args.userId);
+    return true;
+  },
+});
+
 /** Public session validation — returns the logged-in user (no hash). */
 export const getSession = query({
   args: { token: v.string() },
