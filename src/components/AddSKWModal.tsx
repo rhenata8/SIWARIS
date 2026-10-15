@@ -20,6 +20,7 @@ export const AddSKWModal: React.FC = () => {
   const [catatan, setCatatan] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [ahliWarisList, setAhliWarisList] = useState<AhliWaris[]>([
     { nama: '', hubungan: 'Istri', nik: '' },
@@ -41,6 +42,7 @@ export const AddSKWModal: React.FC = () => {
     setCatatan('');
     setFileName('');
     setFileSize('');
+    setSelectedFile(null);
     setAhliWarisList([
       { nama: '', hubungan: 'Istri', nik: '' },
       { nama: '', hubungan: 'Anak Kandung', nik: '' },
@@ -80,6 +82,13 @@ export const AddSKWModal: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setErrorMsg('Ukuran file melebihi 10MB. Mohon kompres dokumen terlebih dahulu.');
+        e.target.value = '';
+        return;
+      }
+      setErrorMsg('');
+      setSelectedFile(file);
       setFileName(file.name);
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setFileSize(sizeMB + ' MB');
@@ -117,20 +126,24 @@ export const AddSKWModal: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      await addArchive({
-        nomorSKW: cleanNomor,
-        tanggalSurat,
-        namaPewaris: cleanNama,
-        nikPewaris: nikPewaris.trim() || '3574' + Math.floor(100000000000 + Math.random() * 900000000000),
-        tanggalMeninggal,
-        jumlahAhliWaris: validAhli.length,
-        ahliWarisList: validAhli,
-        alamat: alamat.trim(),
-        status,
-        catatan: catatan.trim() || 'Arsip tersimpan di Kelurahan Sumbertaman',
-        fileName: fileName || `SKW_${cleanNama.replace(/\s+/g, '_')}_Scan.pdf`,
-        fileSize: fileSize || '1.1 MB',
-      });
+      await addArchive(
+        {
+          nomorSKW: cleanNomor,
+          tanggalSurat,
+          namaPewaris: cleanNama,
+          nikPewaris: nikPewaris.trim() || '3574' + Math.floor(100000000000 + Math.random() * 900000000000),
+          tanggalMeninggal,
+          jumlahAhliWaris: validAhli.length,
+          ahliWarisList: validAhli,
+          alamat: alamat.trim(),
+          status,
+          catatan: catatan.trim() || 'Arsip tersimpan di Kelurahan Sumbertaman',
+          // fileName/fileSize hanya terisi bila berkas asli benar-benar diunggah
+          fileName: selectedFile ? selectedFile.name : undefined,
+          fileSize: selectedFile ? fileSize : undefined,
+        },
+        selectedFile
+      );
 
       resetForm();
       setIsAddModalOpen(false);
@@ -349,7 +362,7 @@ export const AddSKWModal: React.FC = () => {
                 Unggah Dokumen Berkas Digital
               </div>
               <div className="form-group">
-                <label className="form-label">File Scan Surat Keterangan Waris (PDF/JPG/PNG)</label>
+                <label className="form-label">Unggah Berkas Asli SKW (Opsional — PDF/JPG/PNG)</label>
                 <div
                   style={{
                     border: '2px dashed #93c5fd',

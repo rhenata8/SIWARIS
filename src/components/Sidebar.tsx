@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: '11px' }}>
               <ShieldCheck size={13} color="#60a5fa" />
               <div>
-                <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '11px' }}>SIWARIS v1.0</div>
+                <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '11px' }}>SIWARIS v2.0</div>
                 <div style={{ fontSize: '10px', color: '#64748b', marginTop: 1 }}>Kelurahan Sumbertaman © 2026</div>
               </div>
             </div>

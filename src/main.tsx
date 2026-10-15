@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AppProvider } from './context/AppContext';
+import { AuthProvider } from './context/AuthContext';
 import { ConvexProvider } from 'convex/react';
 import { convexClient, isConvexEnabled } from './services/convex';
 import './index.css';
@@ -16,17 +17,21 @@ const RootApp = () => {
   if (isConvexEnabled && convexClient) {
     return (
       <ConvexProvider client={convexClient}>
-        <AppProvider>
-          <App />
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <App />
+          </AppProvider>
+        </AuthProvider>
       </ConvexProvider>
     );
   }
 
   return (
-    <AppProvider>
-      <App />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <App />
+      </AppProvider>
+    </AuthProvider>
   );
 };
 

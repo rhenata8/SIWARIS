@@ -26,3 +26,4 @@ dist-ssr
 # Test outputs
 scripts/screenshots/
 scripts/downloads/
+.env.local

@@ -218,6 +218,71 @@ export const generateUploadUrl = mutation({
 });
 
 /**
+ * Attach an uploaded file (scan of the original SKW document) to an archive.
+ * Called after the client uploads the blob via generateUploadUrl().
+ * Stores storageId + metadata and resolves fileUrl once.
+ */
+export const finalizeUpload = mutation({
+  args: {
+    id: v.id("archives"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileSize: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const archive = await ctx.db.get(args.id);
+    if (!archive) throw new Error("Arsip tidak ditemukan.");
+    const fileUrl = await ctx.storage.getUrl(args.storageId);
+    await ctx.db.patch(args.id, {
+      storageId: args.storageId,
+      fileName: args.fileName,
+      fileSize: args.fileSize,
+      fileUrl: fileUrl || undefined,
+    });
+    return { fileUrl };
+  },
+});
+
+/**
+ * Resolve a fresh download URL for a stored original document.
+ * (Storage URLs can expire — always fetch fresh before download.)
+ */
+export const getFileUrl = query({
+  args: { archiveId: v.id("archives") },
+  handler: async (ctx, args) => {
+    const archive = await ctx.db.get(args.archiveId);
+    if (!archive || !archive.storageId) return null;
+    return await ctx.storage.getUrl(archive.storageId);
+  },
+});
+
+/**
+ * Public verification query — returns ONLY safe fields,
+ * never NIK or internal data. Used by the QR validation page.
+ */
+export const getPublicArchive = query({
+  args: { idArsip: v.string() },
+  handler: async (ctx, args) => {
+    const clean = args.idArsip.trim();
+    const archive = await ctx.db
+      .query("archives")
+      .withIndex("by_idArsip", (q) => q.eq("idArsip", clean))
+      .first();
+    if (!archive) return null;
+    return {
+      idArsip: archive.idArsip,
+      nomorSKW: archive.nomorSKW,
+      namaPewaris: archive.namaPewaris,
+      tanggalSurat: archive.tanggalSurat,
+      tanggalMeninggal: archive.tanggalMeninggal,
+      jumlahAhliWaris: archive.jumlahAhliWaris,
+      status: archive.status,
+      tahun: archive.tahun,
+    };
+  },
+});
+
+/**
  * Deduplicate archives in the database.
  * Detects duplicates by both idArsip and nomorSKW.
  * For each group, keeps the OLDEST record (smallest createdAt) and deletes the rest.

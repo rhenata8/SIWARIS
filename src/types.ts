@@ -20,6 +20,7 @@ export interface ArchiveSKW {
   fileName?: string;
   fileUrl?: string;
   fileSize?: string;
+  storageId?: string;
   tahun: number;
   createdAt: number;
 }

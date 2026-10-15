@@ -34,7 +34,7 @@ interface AppContextType {
     year2025: number;
     year2026: number;
   };
-  addArchive: (archive: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => Promise<ArchiveSKW>;
+  addArchive: (data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>, file?: File | null) => Promise<ArchiveSKW>;
   updateArchive: (id: string, updates: Partial<ArchiveSKW>) => Promise<void>;
   deleteArchive: (id: string) => Promise<void>;
   updateStatus: (id: string, newStatus: 'Tersimpan' | 'Terverifikasi' | 'Diproses') => Promise<void>;
@@ -271,7 +271,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     year2026: total2026,
   };
 
-  const addArchive = async (data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>) => {
+  const addArchive = async (
+    data: Omit<ArchiveSKW, '_id' | 'idArsip' | 'createdAt' | 'tahun'>,
+    file?: File | null
+  ) => {
     const cleanNomor = data.nomorSKW.trim();
     const existing = archives.find(
       (a) => a.nomorSKW.trim().toLowerCase() === cleanNomor.toLowerCase()
@@ -324,6 +327,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           tahun: year,
           createdAt,
         };
+
+        // Upload the original document file (if attached) to Convex File Storage
+        if (file) {
+          try {
+            const postUrl: string = await convexClient.mutation(
+              api.skw.generateUploadUrl,
+              {}
+            );
+            const uploadRes = await fetch(postUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': file.type || 'application/octet-stream' },
+              body: file,
+            });
+            if (!uploadRes.ok) {
+              throw new Error(`Upload gagal (HTTP ${uploadRes.status}).`);
+            }
+            const { storageId } = await uploadRes.json();
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+            const fin: any = await convexClient.mutation(api.skw.finalizeUpload, {
+              id: result.id,
+              storageId,
+              fileName: file.name,
+              fileSize: sizeMB,
+            });
+            realArch.fileName = file.name;
+            realArch.fileSize = sizeMB;
+            realArch.storageId = storageId;
+            realArch.fileUrl = fin?.fileUrl || undefined;
+          } catch (uploadErr: any) {
+            // The archive record is already saved — the file failed to attach.
+            console.error('Gagal mengunggah berkas asli:', uploadErr);
+            throw new Error(
+              `Arsip tersimpan, tetapi unggahan berkas asli gagal: ${uploadErr?.message || uploadErr}`
+            );
+          }
+        }
+
         setArchives((prev) =>
           prev.map((a) => (a._id === tempId ? realArch : a))
         );
