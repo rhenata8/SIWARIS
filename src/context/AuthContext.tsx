@@ -29,6 +29,8 @@ interface AuthContextType {
     nip?: string;
     email?: string;
   }) => Promise<any>;
+  changeUserPassword: (targetUserId: string, newPassword: string) => Promise<void>;
+  changeOwnPassword: (oldPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,13 +152,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [token]
   );
 
+  // Admin resets another user's password (requires an admin session)
+  const changeUserPassword = useCallback(
+    async (targetUserId: string, newPassword: string) => {
+      if (!convexClient || !isConvexEnabled) {
+        throw new Error('Koneksi ke server Convex tidak tersedia.');
+      }
+      if (!token) {
+        throw new Error('Sesi tidak ditemukan. Silakan login ulang.');
+      }
+      const result: any = await convexClient.action(api.authActions.changeUserPassword, {
+        adminToken: token,
+        targetUserId: targetUserId as any, // Convex Id<"users"> (string at runtime)
+        newPassword,
+      });
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Gagal mengubah password pengguna.');
+      }
+    },
+    [token]
+  );
+
+  // Change the password of the currently logged-in user
+  const changeOwnPassword = useCallback(
+    async (oldPassword: string, newPassword: string) => {
+      if (!convexClient || !isConvexEnabled) {
+        throw new Error('Koneksi ke server Convex tidak tersedia.');
+      }
+      if (!token) {
+        throw new Error('Sesi tidak ditemukan. Silakan login ulang.');
+      }
+      const result: any = await convexClient.action(api.authActions.changeOwnPassword, {
+        token,
+        oldPassword,
+        newPassword,
+      });
+      if (result?.ok === false) {
+        throw new Error(result.error || 'Gagal mengubah password.');
+      }
+    },
+    [token]
+  );
+
   const isAdmin = Boolean(
     user && (user.username === 'admin' || user.role === 'Administrator')
   );
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isAuthReady, isAdmin, login, logout, registerUser }}
+      value={{
+        user,
+        token,
+        isAuthReady,
+        isAdmin,
+        login,
+        logout,
+        registerUser,
+        changeUserPassword,
+        changeOwnPassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

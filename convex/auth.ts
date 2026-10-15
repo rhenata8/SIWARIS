@@ -82,6 +82,30 @@ export const findUserByUsername = internalQuery({
   },
 });
 
+/**
+ * Fetch a single user by ID, including passwordHash.
+ * Internal-only — used by the auth actions (password change flows).
+ */
+export const getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    return {
+      _id: user._id,
+      nama: user.nama,
+      username: user.username,
+      nip: user.nip,
+      role: user.role,
+      status: user.status,
+      email: user.email,
+      avatar: user.avatar,
+      passwordHash: user.passwordHash,
+      createdAt: user.createdAt,
+    };
+  },
+});
+
 export const insertUserWithHash = internalMutation({
   args: {
     nama: v.string(),

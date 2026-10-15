@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Building2, Lock, LogIn, User as UserIcon, ShieldCheck, UserPlus } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Building2, Lock, LogIn, User as UserIcon, ShieldCheck, UserPlus, Eye, EyeOff } from 'lucide-react';
 
 /**
  * SIWARIS Login page.
@@ -8,8 +9,10 @@ import { Building2, Lock, LogIn, User as UserIcon, ShieldCheck, UserPlus } from 
  */
 export const LoginPage: React.FC<{ onGoRegister?: () => void }> = ({ onGoRegister }) => {
   const { login } = useAuth();
+  const { toast } = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,6 +26,7 @@ export const LoginPage: React.FC<{ onGoRegister?: () => void }> = ({ onGoRegiste
     try {
       setIsSubmitting(true);
       await login(username.trim(), password);
+      toast.success('Berhasil masuk. Selamat datang di SIWARIS.');
     } catch (err: any) {
       setErrorMsg(err?.message || 'Gagal masuk. Coba lagi.');
     } finally {
@@ -63,16 +67,25 @@ export const LoginPage: React.FC<{ onGoRegister?: () => void }> = ({ onGoRegiste
 
           <div className="form-group">
             <label className="form-label">Password</label>
-            <div className="auth-input-wrap">
+            <div className="auth-input-wrap has-eye">
               <Lock size={16} color="#94a3b8" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Masukkan password"
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                className="auth-eye-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

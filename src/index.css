@@ -1541,3 +1541,476 @@ body {
     padding: 26px 20px 20px;
   }
 }
+
+/* ============================================================
+   v2.1 — Toast & In-App Confirm
+   ============================================================ */
+
+/* ---------- Toast stack (fixed top-right, di atas modal) ---------- */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-600);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 12px 12px 14px;
+  min-width: 240px;
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-success { border-left-color: #16a34a; }
+.toast-error { border-left-color: #dc2626; }
+.toast-info { border-left-color: #2563eb; }
+
+.toast-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+.toast-close {
+  background: none;
+  border: 0;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+.toast-close:hover {
+  color: var(--text-main);
+  background: #e2e8f0;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- Dialog konfirmasi in-app (pengganti window.confirm) ---------- */
+.confirm-overlay {
+  z-index: 1500; /* di atas modal biasa (100), di bawah toast (2000) */
+}
+
+.confirm-body {
+  text-align: center;
+  padding: 28px 24px;
+}
+
+.confirm-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+.confirm-icon-wrap.danger {
+  background: var(--danger-bg);
+}
+.confirm-icon-wrap.info {
+  background: var(--primary-50);
+}
+
+.confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.confirm-message {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.confirm-footer {
+  justify-content: center;
+}
+
+.confirm-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+.confirm-btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* ---------- Toggle lihat password (Eye/EyeOff) ---------- */
+.auth-input-wrap.has-eye .form-input {
+  padding-right: 40px;
+}
+
+.auth-eye-toggle {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: 0;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.auth-eye-toggle:hover {
+  color: var(--primary-700);
+}
+
+/* ============================================================
+   v2.1 — Responsive mobile/tablet (append, jangan diubah urutan)
+   ============================================================ */
+
+/* ---------- Sidebar drawer backdrop (elemen dirender shell) ---------- */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(10, 25, 47, 0.55);
+  backdrop-filter: blur(2px);
+  display: none;
+}
+.sidebar-backdrop.show,
+.sidebar-backdrop.open {
+  display: block;
+}
+
+/* ---------- Tablet besar / laptop kecil ---------- */
+@media (max-width: 1024px) {
+  .topbar {
+    padding: 12px 24px;
+  }
+  .page-container {
+    padding: 24px;
+  }
+  .stat-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .panel {
+    padding: 20px;
+  }
+  .custom-table th,
+  .custom-table td {
+    padding: 12px 12px;
+  }
+  .stat-value {
+    font-size: 27px;
+  }
+}
+
+/* ---------- Sidebar jadi drawer overlay di bawah 900px ---------- */
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 60;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop {
+    display: block;
+  }
+  .sidebar-backdrop.hidden {
+    display: none;
+  }
+  .main-wrapper {
+    margin-left: 0;
+    width: 100%;
+  }
+  .mobile-toggle {
+    display: block;
+  }
+}
+
+/* ---------- Tablet / mobile besar ---------- */
+@media (max-width: 768px) {
+  /* Topbar compact */
+  .topbar {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  .topbar-left {
+    gap: 10px;
+  }
+  .topbar-right {
+    gap: 10px;
+  }
+  .page-title-box h2 {
+    font-size: 16px;
+  }
+  .page-title-box p {
+    font-size: 11px;
+  }
+  .topbar-search-trigger {
+    display: none;
+  }
+  .user-profile-badge {
+    padding: 4px 10px 4px 5px;
+    gap: 8px;
+  }
+
+  /* Halaman */
+  .page-container {
+    padding: 16px 14px 32px;
+  }
+  .app-container footer {
+    padding: 14px 16px !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Kartu statistik: 2 kolom */
+  .stat-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Banner dashboard menumpuk */
+  .welcome-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 20px 18px !important;
+  }
+
+  /* Panel & header panel */
+  .panel {
+    padding: 18px 16px;
+  }
+  .panel-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .panel-title-area h3 {
+    font-size: 15.5px;
+  }
+
+  /* Tabel */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .custom-table {
+    font-size: 12px;
+  }
+  .custom-table th {
+    padding: 10px 10px;
+    font-size: 10px;
+  }
+  .custom-table td {
+    padding: 10px 10px;
+  }
+
+  /* Badge */
+  .badge {
+    padding: 3px 8px;
+    font-size: 10.5px;
+  }
+
+  /* Modal: hampir selebar layar, body scroll sendiri */
+  .modal-overlay {
+    padding: 10px;
+  }
+  .modal-dialog,
+  .modal-dialog.large,
+  .modal-dialog.small {
+    width: 95vw;
+    max-width: 95vw;
+    height: auto;
+    max-height: calc(100vh - 20px);
+  }
+  .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-header {
+    padding: 14px 16px;
+  }
+  .modal-header h3 {
+    font-size: 15.5px;
+  }
+  .modal-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Form dalam modal jadi 1 kolom */
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Toast: top-center, lebar 90vw */
+  .toast-stack {
+    top: 12px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 90vw;
+    max-width: 90vw;
+  }
+  .toast {
+    min-width: 0;
+    width: 100%;
+  }
+  .toast-message {
+    font-size: 12.5px;
+  }
+}
+
+/* ---------- Ponsel ---------- */
+@media (max-width: 480px) {
+  .page-title-box h2 {
+    font-size: 15px;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+  .user-info {
+    display: none;
+  }
+
+  .page-container {
+    padding: 14px 10px 28px;
+  }
+
+  /* Statistik 1 kolom penuh */
+  .stat-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    padding: 16px 14px;
+  }
+  .stat-value {
+    font-size: 24px;
+  }
+  .stat-icon-wrapper {
+    width: 38px;
+    height: 38px;
+  }
+
+  .welcome-banner {
+    padding: 16px 14px !important;
+  }
+  .welcome-banner h2 {
+    font-size: 19px !important;
+  }
+  .welcome-banner p {
+    font-size: 12px !important;
+  }
+
+  /* Panel & tombol lebih rapat */
+  .panel {
+    padding: 14px 12px;
+  }
+  .panel-header {
+    margin-bottom: 12px;
+  }
+  .panel-title-area h3 {
+    font-size: 14.5px;
+  }
+  .btn {
+    padding: 9px 14px;
+    font-size: 12.5px;
+  }
+  .btn-sm {
+    padding: 5px 8px;
+    font-size: 11.5px;
+    gap: 5px;
+  }
+
+  /* Tabel sangat compact */
+  .custom-table {
+    font-size: 11.5px;
+  }
+  .custom-table th {
+    padding: 8px 8px;
+    font-size: 9.5px;
+  }
+  .custom-table td {
+    padding: 8px 8px;
+  }
+  .badge {
+    padding: 2px 7px;
+    font-size: 10px;
+  }
+
+  /* Grid aksi 2x2 tetap muat tanpa dorong tabel */
+  .action-grid {
+    width: 160px !important;
+    gap: 4px !important;
+  }
+
+  /* Search bar isi lebar baris */
+  .search-bar-wrapper {
+    width: 100% !important;
+  }
+
+  /* Modal & toast aman di layar sempit */
+  .modal-dialog,
+  .modal-dialog.large,
+  .modal-dialog.small {
+    width: 95vw;
+    max-width: 95vw;
+  }
+  .modal-body {
+    max-height: 68vh;
+    padding: 16px 14px;
+  }
+  .toast-stack {
+    width: 90vw;
+    max-width: 90vw;
+  }
+
+  /* Auth card lebih ramping */
+  .auth-page {
+    padding: 12px;
+  }
+  .auth-card {
+    padding: 24px 18px 18px;
+  }
+  .auth-brand h1 {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+  .auth-submit {
+    padding: 11px 16px;
+    font-size: 13px;
+  }
+}

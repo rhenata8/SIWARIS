@@ -157,8 +157,16 @@ export const SuratWarisPage: React.FC = () => {
                         {x.status}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                    <td>
+                      <div
+                        className="action-grid"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: 6,
+                          width: 180,
+                        }}
+                      >
                         <button
                           className="btn btn-secondary btn-sm"
                           onClick={() => setSelectedArchive(x)}
@@ -185,7 +193,7 @@ export const SuratWarisPage: React.FC = () => {
                           onClick={() => handleDelete(x)}
                           title="Hapus data"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={13} /> Hapus
                         </button>
                       </div>
                     </td>

@@ -7,6 +7,8 @@ import {
   Lock,
   User as UserIcon,
   BadgeCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 /**
@@ -21,6 +23,8 @@ export const RegisterPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword2, setShowPassword2] = useState(false);
   const [role, setRole] = useState('Operator Pelayanan');
   const [nip, setNip] = useState('');
   const [email, setEmail] = useState('');
@@ -154,30 +158,48 @@ export const RegisterPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
           <div className="auth-form-grid">
             <div className="form-group">
               <label className="form-label">Password <span className="required">*</span></label>
-              <div className="auth-input-wrap">
+              <div className="auth-input-wrap has-eye">
                 <Lock size={16} color="#94a3b8" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   className="form-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="min. 6 karakter"
                   required
                 />
+                <button
+                  type="button"
+                  className="auth-eye-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                  title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <div className="form-group">
               <label className="form-label">Konfirmasi Password <span className="required">*</span></label>
-              <div className="auth-input-wrap">
+              <div className="auth-input-wrap has-eye">
                 <Lock size={16} color="#94a3b8" />
                 <input
-                  type="password"
+                  type={showPassword2 ? 'text' : 'password'}
                   className="form-input"
                   value={password2}
                   onChange={(e) => setPassword2(e.target.value)}
                   placeholder="Ulangi password"
                   required
                 />
+                <button
+                  type="button"
+                  className="auth-eye-toggle"
+                  onClick={() => setShowPassword2((v) => !v)}
+                  aria-label={showPassword2 ? 'Sembunyikan password' : 'Tampilkan password'}
+                  title={showPassword2 ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showPassword2 ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
           </div>

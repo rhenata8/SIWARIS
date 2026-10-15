@@ -1,15 +1,22 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { Trash2, AlertTriangle, X } from 'lucide-react';
 
 export const DeleteConfirmModal: React.FC = () => {
   const { deletingArchive, setDeletingArchive, deleteArchive } = useApp();
+  const { toast } = useToast();
 
   if (!deletingArchive) return null;
 
   const handleConfirm = async () => {
-    await deleteArchive(deletingArchive.idArsip);
-    setDeletingArchive(null);
+    try {
+      await deleteArchive(deletingArchive.idArsip);
+      setDeletingArchive(null);
+      toast.success('Arsip berhasil dihapus');
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menghapus arsip.');
+    }
   };
 
   return (

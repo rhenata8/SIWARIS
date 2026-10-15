@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, ShieldCheck, FileCheck2, FileX2 } from 'lucide-react';
+import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, ShieldCheck, FileCheck2, FileX2, AlertTriangle, X } from 'lucide-react';
 import { convexClient, isConvexEnabled } from '../services/convex';
 import { api } from '../../convex/_generated/api';
 
@@ -8,6 +8,7 @@ export const ArsipDigitalPage: React.FC = () => {
   const { archives, setPreviewDocArchive, setQrModalArchive, setIsAddModalOpen } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const filtered = archives.filter(
     (x) =>
@@ -16,9 +17,10 @@ export const ArsipDigitalPage: React.FC = () => {
       (x.fileName && x.fileName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Download the ORIGINAL uploaded file (from Convex File Storage)
+  // Download the BERKAS SCAN (original uploaded file) from Convex File Storage
   const handleDownloadOriginal = async (x: (typeof archives)[number]) => {
     if (!x.storageId || !x._id || x._id.startsWith('temp-')) return;
+    setErrorMsg('');
     try {
       setDownloadingId(x._id);
       let url: string | null = x.fileUrl || null;
@@ -29,7 +31,7 @@ export const ArsipDigitalPage: React.FC = () => {
         if (fresh) url = fresh;
       }
       if (!url) {
-        alert('Berkas asli tidak dapat ditemukan di penyimpanan.');
+        setErrorMsg('Berkas scan tidak dapat ditemukan di penyimpanan.');
         return;
       }
       const a = document.createElement('a');
@@ -40,7 +42,7 @@ export const ArsipDigitalPage: React.FC = () => {
       a.remove();
     } catch (e) {
       console.error(e);
-      alert('Gagal mengunduh berkas asli.');
+      setErrorMsg('Gagal mengunduh berkas scan.');
     } finally {
       setDownloadingId(null);
     }
@@ -63,6 +65,36 @@ export const ArsipDigitalPage: React.FC = () => {
           </button>
         </div>
 
+        {/* Inline error message (pengganti window.alert) */}
+        {errorMsg && (
+          <div
+            style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontSize: 12.5,
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}
+          >
+            <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span style={{ flex: 1 }}>{errorMsg}</span>
+            <button
+              type="button"
+              className="btn btn-subtle btn-sm"
+              onClick={() => setErrorMsg('')}
+              title="Tutup pesan"
+              style={{ padding: '2px 6px' }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="table-responsive">
           <table className="custom-table">
@@ -71,7 +103,7 @@ export const ArsipDigitalPage: React.FC = () => {
                 <th>Nama Dokumen</th>
                 <th>ID Arsip</th>
                 <th>Pewaris / Pemohon</th>
-                <th>Berkas Asli</th>
+                <th>Berkas Scan</th>
                 <th>Ukuran</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Aksi</th>
@@ -138,11 +170,11 @@ export const ArsipDigitalPage: React.FC = () => {
                         <button
                           className="btn btn-secondary btn-sm"
                           onClick={() => handleDownloadOriginal(x)}
-                          title="Unduh berkas asli yang diunggah operator"
+                          title="Unduh berkas scan yang diunggah operator"
                           disabled={downloadingId === x._id}
                         >
                           <Download size={13} />
-                          {downloadingId === x._id ? 'Mengunduh...' : 'Unduh Asli'}
+                          {downloadingId === x._id ? 'Mengunduh...' : 'Unduh Scan'}
                         </button>
                       )}
                       <button

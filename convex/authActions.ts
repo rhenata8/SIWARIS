@@ -172,3 +172,88 @@ export const registerUser = action({
     return { ok: true, id, user: publicUser(created) };
   },
 });
+
+/**
+ * Admin resets another user's password.
+ * Requires a valid admin session (username "admin" or role "Administrator").
+ * Returns structured results (not throws) so error messages reach the
+ * client cleanly — errors thrown from Node actions surface as generic
+ * "Server Error" on the browser side.
+ */
+export const changeUserPassword = action({
+  args: {
+    adminToken: v.string(),
+    targetUserId: v.id("users"),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const session: any = await ctx.runQuery(internal.auth.validateSession, {
+      token: args.adminToken,
+    });
+    if (!session) {
+      return { ok: false, error: "Sesi admin tidak valid atau sudah berakhir. Silakan login ulang." };
+    }
+    const admin = session.user;
+    if (admin.username !== "admin" && admin.role !== "Administrator") {
+      return { ok: false, error: "Hanya administrator yang dapat mengubah password pengguna lain." };
+    }
+    if (args.newPassword.length < 6) {
+      return { ok: false, error: "Password baru minimal 6 karakter." };
+    }
+
+    const target: any = await ctx.runQuery(internal.auth.getUserById, {
+      userId: args.targetUserId,
+    });
+    if (!target) {
+      return { ok: false, error: "Pengguna tidak ditemukan." };
+    }
+
+    await ctx.runMutation(internal.auth.setUserPasswordHash, {
+      userId: args.targetUserId,
+      passwordHash: hashPassword(args.newPassword),
+    });
+    return { ok: true };
+  },
+});
+
+/**
+ * Change the password of the currently logged-in user.
+ * Requires the old password to match before the new one is stored.
+ */
+export const changeOwnPassword = action({
+  args: {
+    token: v.string(),
+    oldPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const session: any = await ctx.runQuery(internal.auth.validateSession, {
+      token: args.token,
+    });
+    if (!session) {
+      return { ok: false, error: "Sesi tidak valid atau sudah berakhir. Silakan login ulang." };
+    }
+    if (args.newPassword.length < 6) {
+      return { ok: false, error: "Password baru minimal 6 karakter." };
+    }
+
+    const me: any = await ctx.runQuery(internal.auth.getUserById, {
+      userId: session.user._id,
+    });
+    if (!me) {
+      return { ok: false, error: "Data pengguna tidak ditemukan." };
+    }
+    if (!me.passwordHash || !verifyPassword(args.oldPassword, me.passwordHash)) {
+      return { ok: false, error: "Password lama salah." };
+    }
+    if (args.oldPassword === args.newPassword) {
+      return { ok: false, error: "Password baru tidak boleh sama dengan password lama." };
+    }
+
+    await ctx.runMutation(internal.auth.setUserPasswordHash, {
+      userId: me._id,
+      passwordHash: hashPassword(args.newPassword),
+    });
+    return { ok: true };
+  },
+});

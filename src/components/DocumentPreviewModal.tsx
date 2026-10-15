@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Download, ZoomIn, ZoomOut, FileText, FileWarning } from 'lucide-react';
 import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
@@ -7,27 +7,66 @@ import { convexClient, isConvexEnabled } from '../services/convex';
 import { api } from '../../convex/_generated/api';
 
 /**
- * Document Preview — SIWARIS v2.0
+ * Document Preview — SIWARIS v2.1
  *
- * Dua jenis dokumen yang jelas bedanya:
- * 1. BERKAS ASLI  → file yang diunggah operator saat menambah SKW
- *                   (disimpan di Convex File Storage). Tombol: "Unduh Berkas Asli".
- * 2. DOKUMEN RESMI → dokumen SIWARIS yang di-generate (kop surat, TTE, QR).
- *                   Tombol: "Unduh PDF Resmi SIWARIS".
+ * Dua jenis berkas yang dibedakan dengan jelas:
+ * 1. BERKAS SCAN (ASLI)  → hasil scan dokumen fisik yang diunggah operator
+ *                          saat menambah SKW (disimpan di Convex File Storage).
+ *                          Tombol: "Unduh Berkas Scan".
+ * 2. BERKAS RESMI SIWARIS → dokumen yang DI-GENERATE aplikasi (kop surat, TTE, QR).
+ *                          Tombol: "Unduh PDF Resmi SIWARIS".
+ *
+ * Mode pratinjau:
+ * - 'scan'  → paksa tampilkan berkas scan (asli) unggahan operator.
+ * - 'resmi' → paksa tampilkan Berkas Resmi SIWARIS (digenerate).
+ * - 'auto'  → perilaku lama: tampilkan scan bila ada, jika tidak tampilkan resmi.
  */
-export const DocumentPreviewModal: React.FC = () => {
+export type DocumentPreviewMode = 'scan' | 'resmi' | 'auto';
+
+/**
+ * Channel mode pratinjau antar-komponen.
+ * App.tsx memasang <DocumentPreviewModal /> tanpa prop, jadi pemanggil
+ * (mis. DetailSKWModal) mengarahkan mode lewat helper ini SEBELUM
+ * memanggil setPreviewDocArchive(). Nilai dikonsumsi sekali lalu reset ke 'auto'.
+ */
+let nextPreviewMode: DocumentPreviewMode = 'auto';
+export function setNextPreviewMode(mode: DocumentPreviewMode) {
+  nextPreviewMode = mode;
+}
+
+export const DocumentPreviewModal: React.FC<{ mode?: DocumentPreviewMode }> = ({ mode = 'auto' }) => {
   const { previewDocArchive, setPreviewDocArchive, letterFormat } = useApp();
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [origUrl, setOrigUrl] = useState<string | null>(null);
   const [origLoading, setOrigLoading] = useState(false);
+  const [origSettled, setOrigSettled] = useState(false);
+  const [requestedMode, setRequestedMode] = useState<DocumentPreviewMode>('auto');
 
   const archive = previewDocArchive;
   const hasOriginal = Boolean(archive && (archive.storageId || archive.fileUrl));
 
-  // Resolve a fresh storage URL for the original file each time the modal opens
+  // Mode efektif: prop eksplisit menang; jika 'auto', pakai mode dari channel.
+  const effectiveMode: DocumentPreviewMode = mode !== 'auto' ? mode : requestedMode;
+  const showScan = Boolean(hasOriginal && effectiveMode !== 'resmi');
+
+  // Konsumsi mode dari channel SEBELUM paint (useLayoutEffect) supaya
+  // render pertama modal sudah memakai mode yang benar (scan/resmi).
+  useLayoutEffect(() => {
+    if (previewDocArchive) {
+      const pending = nextPreviewMode;
+      nextPreviewMode = 'auto'; // consume once
+      setRequestedMode(pending);
+    } else {
+      setRequestedMode('auto');
+    }
+  }, [previewDocArchive]);
+
+  // Resolve a fresh storage URL for the original file each time the modal opens.
   useEffect(() => {
     let cancelled = false;
     setOrigUrl(null);
+    setOrigSettled(false);
+    setZoomLevel(100);
     if (archive && archive.storageId && archive._id && !archive._id.startsWith('temp-') && convexClient && isConvexEnabled) {
       setOrigLoading(true);
       convexClient
@@ -39,10 +78,16 @@ export const DocumentPreviewModal: React.FC = () => {
           if (!cancelled) setOrigUrl(archive.fileUrl || null);
         })
         .finally(() => {
-          if (!cancelled) setOrigLoading(false);
+          if (!cancelled) {
+            setOrigLoading(false);
+            setOrigSettled(true);
+          }
         });
     } else if (archive?.fileUrl) {
       setOrigUrl(archive.fileUrl);
+      setOrigSettled(true);
+    } else {
+      setOrigSettled(true);
     }
     return () => {
       cancelled = true;
@@ -55,7 +100,7 @@ export const DocumentPreviewModal: React.FC = () => {
     generateAndDownloadSKWPDF(archive, letterFormat);
   };
 
-  const handleDownloadOriginal = () => {
+  const handleDownloadScan = () => {
     if (!origUrl) return;
     const a = document.createElement('a');
     a.href = origUrl;
@@ -69,14 +114,14 @@ export const DocumentPreviewModal: React.FC = () => {
   const isPdf = !isImage && (archive.fileName || '').toLowerCase().endsWith('.pdf');
 
   const renderPreview = () => {
-    if (hasOriginal && origLoading) {
+    if (showScan && (origLoading || !origSettled)) {
       return (
         <div style={{ color: '#cbd5e1', fontSize: 13, padding: '60px 0', textAlign: 'center' }}>
-          Memuat berkas asli...
+          Memuat berkas scan...
         </div>
       );
     }
-    if (hasOriginal && origUrl && isPdf) {
+    if (showScan && origUrl && isPdf) {
       return (
         <iframe
           src={origUrl}
@@ -91,7 +136,7 @@ export const DocumentPreviewModal: React.FC = () => {
         />
       );
     }
-    if (hasOriginal && origUrl && isImage) {
+    if (showScan && origUrl && isImage) {
       return (
         <img
           src={origUrl}
@@ -100,18 +145,33 @@ export const DocumentPreviewModal: React.FC = () => {
         />
       );
     }
-    if (hasOriginal && !origUrl) {
+    if (showScan && !origUrl) {
+      // Berkas scan terdaftar tetapi URL-nya tidak dapat diselesaikan → fallback resmi
       return (
-        <div style={{ color: '#fca5a5', fontSize: 13, padding: '60px 20px', textAlign: 'center' }}>
-          <FileWarning size={28} style={{ marginBottom: 8 }} />
-          <div>Berkas asli terdaftar tetapi URL-nya tidak dapat diselesaikan.</div>
-          <div style={{ marginTop: 8, color: '#cbd5e1' }}>
-            Menampilkan dokumen resmi yang di-generate SIWARIS sebagai gantinya.
+        <>
+          <div style={{ color: '#fca5a5', fontSize: 13, padding: '0 0 18px', textAlign: 'center' }}>
+            <FileWarning size={28} style={{ marginBottom: 8 }} />
+            <div>Berkas scan terdaftar tetapi URL-nya tidak dapat diselesaikan.</div>
+            <div style={{ marginTop: 8, color: '#cbd5e1' }}>
+              Menampilkan Berkas Resmi SIWARIS sebagai gantinya.
+            </div>
           </div>
-        </div>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 720,
+              transform: `scale(${zoomLevel / 100})`,
+              transformOrigin: 'top center',
+              transition: 'transform 0.15s ease',
+            }}
+          >
+            <OfficialSKWDocument archive={archive} letterFormat={letterFormat} />
+          </div>
+        </>
       );
     }
-    // No original uploaded — show the generated official document
+    // Tidak menampilkan scan: mode 'resmi' atau scan belum diunggah →
+    // tampilkan Berkas Resmi SIWARIS yang di-generate.
     return (
       <>
         <div
@@ -125,8 +185,19 @@ export const DocumentPreviewModal: React.FC = () => {
             marginBottom: 14,
           }}
         >
-          Berkas asli belum diunggah untuk arsip ini. Yang ditampilkan adalah dokumen resmi
-          yang di-generate SIWARIS — unduh versi resmi dengan tombol <b>Unduh PDF Resmi SIWARIS</b>.
+          {hasOriginal ? (
+            <>
+              Menampilkan <b>Berkas Resmi SIWARIS</b> — dokumen digenerate (kop surat, TTE, QR) dari
+              data arsip ini. Berkas scan unggahan operator tidak ditampilkan pada mode ini.
+              Unduh versi resmi dengan tombol <b>Unduh PDF Resmi SIWARIS</b>.
+            </>
+          ) : (
+            <>
+              Berkas scan belum diunggah untuk arsip ini. Yang ditampilkan adalah{' '}
+              <b>Berkas Resmi SIWARIS</b> yang digenerate — unduh versi resmi dengan tombol{' '}
+              <b>Unduh PDF Resmi SIWARIS</b>.
+            </>
+          )}
         </div>
         <div
           style={{
@@ -155,13 +226,15 @@ export const DocumentPreviewModal: React.FC = () => {
               </h3>
               <p style={{ fontSize: 11, color: '#64748b' }}>
                 {archive.idArsip} • {archive.fileSize || '—'} •{' '}
-                {hasOriginal ? 'Berkas Asli (Unggahan Operator)' : 'Dokumen Resmi Generated SIWARIS'}
+                {showScan
+                  ? 'Berkas Scan — unggahan operator'
+                  : 'Berkas Resmi SIWARIS — dokumen digenerate'}
               </p>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {!hasOriginal && (
+            {!showScan && (
               <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: 6, padding: '2px 6px', gap: 4 }}>
                 <button
                   className="btn btn-sm"
@@ -186,8 +259,8 @@ export const DocumentPreviewModal: React.FC = () => {
             )}
 
             {hasOriginal && (
-              <button className="btn btn-primary btn-sm" onClick={handleDownloadOriginal} disabled={!origUrl}>
-                <Download size={14} /> Unduh Berkas Asli
+              <button className="btn btn-primary btn-sm" onClick={handleDownloadScan} disabled={!origUrl}>
+                <Download size={14} /> Unduh Berkas Scan
               </button>
             )}
             <button className="modal-close-btn" onClick={() => setPreviewDocArchive(null)}>
@@ -215,7 +288,7 @@ export const DocumentPreviewModal: React.FC = () => {
             Tutup
           </button>
           <button className="btn btn-primary" onClick={handleDownloadGenerated}>
-            <Download size={15} /> Unduh PDF Resmi SIWARIS (Generated)
+            <Download size={15} /> Unduh PDF Resmi SIWARIS
           </button>
         </div>
       </div>
