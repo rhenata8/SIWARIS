@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Menu, Search, Plus, UserCheck } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Menu, Search, Plus, UserCheck, LogOut } from 'lucide-react';
 import { PageId } from '../types';
 
 interface HeaderProps {
@@ -41,7 +42,14 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { activePage, setActivePage, setIsAddModalOpen } = useApp();
+  const { user, logout } = useAuth();
   const current = pageTitles[activePage] || { title: 'Dashboard', subtitle: '' };
+
+  const handleLogout = async () => {
+    if (window.confirm('Yakin ingin keluar dari SIWARIS?')) {
+      await logout();
+    }
+  };
 
   return (
     <header className="topbar">
@@ -82,10 +90,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <UserCheck size={18} />
           </div>
           <div className="user-info">
-            <div className="user-name">Operator Kelurahan</div>
-            <div className="user-role">Kel. Sumbertaman</div>
+            <div className="user-name">{user?.nama || 'Pengguna'}</div>
+            <div className="user-role">{user?.role || 'Kel. Sumbertaman'}</div>
           </div>
         </div>
+
+        <button
+          onClick={handleLogout}
+          className="btn btn-secondary btn-sm"
+          title="Keluar dari SIWARIS"
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <LogOut size={15} />
+          <span>Keluar</span>
+        </button>
       </div>
     </header>
   );

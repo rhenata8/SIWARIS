@@ -3,7 +3,12 @@ import { v } from "convex/values";
 
 export const getUsers = query({
   handler: async (ctx) => {
-    return await ctx.db.query("users").collect();
+    // Never expose password hashes to the client
+    const users = await ctx.db.query("users").collect();
+    return users.map((u) => {
+      const { passwordHash, ...safe } = u;
+      return safe;
+    });
   },
 });
 

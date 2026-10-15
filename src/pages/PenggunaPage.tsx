@@ -1,37 +1,62 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { User } from '../types';
 import { Settings, UserPlus, Shield, CheckCircle, XCircle, RotateCcw, X, Mail } from 'lucide-react';
 
 export const PenggunaPage: React.FC = () => {
-  const { users, toggleUserStatus, addUser, resetToDefault } = useApp();
+  const { users, toggleUserStatus, resetToDefault } = useApp();
+  const { registerUser, isAdmin } = useAuth();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   // Form states
   const [nama, setNama] = useState('');
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [nip, setNip] = useState('');
   const [role, setRole] = useState('Operator Pelayanan');
   const [email, setEmail] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nama.trim() || !username.trim()) return;
-
-    await addUser({
-      nama: nama.trim(),
-      username: username.trim().toLowerCase(),
-      nip: nip.trim() || undefined,
-      role,
-      status: 'Aktif',
-      email: email.trim() || `${username.trim().toLowerCase()}@kelurahan-sumbertaman.go.id`,
-    });
-
-    setNama('');
-    setUsername('');
-    setNip('');
-    setEmail('');
-    setIsAddUserOpen(false);
+    setErrorMsg('');
+    if (!nama.trim() || !username.trim()) {
+      setErrorMsg('Nama dan username wajib diisi.');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg('Password minimal 6 karakter.');
+      return;
+    }
+    if (password !== password2) {
+      setErrorMsg('Konfirmasi password tidak sama.');
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await registerUser({
+        nama: nama.trim(),
+        username: username.trim(),
+        password,
+        role,
+        nip: nip.trim() || undefined,
+        email: email.trim() || undefined,
+      });
+      setNama('');
+      setUsername('');
+      setPassword('');
+      setPassword2('');
+      setNip('');
+      setEmail('');
+      setIsAddUserOpen(false);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal menambahkan pengguna.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -58,11 +83,17 @@ export const PenggunaPage: React.FC = () => {
             >
               <RotateCcw size={14} /> Reset Data Demo
             </button>
-            <button className="btn btn-primary" onClick={() => setIsAddUserOpen(true)}>
+            <button className="btn btn-primary" onClick={() => setIsAddUserOpen(true)} disabled={!isAdmin}>
               <UserPlus size={16} /> Tambah Staf Baru
             </button>
           </div>
         </div>
+
+        {!isAdmin && (
+          <div className="notice-box" style={{ background: '#eff6ff', borderColor: '#93c5fd', color: '#1e40af', margin: '0 20px 16px' }}>
+            Penambahan pengguna baru hanya dapat dilakukan oleh administrator (akun <b>admin</b>).
+          </div>
+        )}
 
         {/* User table */}
         <div className="table-responsive">
@@ -148,6 +179,11 @@ export const PenggunaPage: React.FC = () => {
 
             <form onSubmit={handleCreateUser}>
               <div className="modal-body">
+                {errorMsg && (
+                  <div className="notice-box" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#b91c1c' }}>
+                    {errorMsg}
+                  </div>
+                )}
                 <div className="form-group">
                   <label className="form-label">
                     Nama Lengkap <span className="required">*</span>
@@ -184,6 +220,36 @@ export const PenggunaPage: React.FC = () => {
                     placeholder="19800101 200501 1 001"
                     value={nip}
                     onChange={(e) => setNip(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Password Login <span className="required">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Minimal 6 karakter"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Konfirmasi Password <span className="required">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Ulangi password"
+                    value={password2}
+                    onChange={(e) => setPassword2(e.target.value)}
+                    required
+                    minLength={6}
                   />
                 </div>
 

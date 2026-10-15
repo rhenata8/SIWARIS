@@ -1,10 +1,12 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, CheckCircle2, FileText, Download, X, Calendar, User, MapPin } from 'lucide-react';
 import { generateAndDownloadSKWPDF } from '../services/pdfGenerator';
 
 export const PublicVerificationModal: React.FC = () => {
   const { publicVerifyId, setPublicVerifyId, archives, letterFormat, setSelectedArchive } = useApp();
+  const { user } = useAuth();
 
   if (!publicVerifyId) return null;
 
@@ -166,7 +168,7 @@ export const PublicVerificationModal: React.FC = () => {
             Tutup
           </button>
 
-          {matched && (
+          {matched && user && (
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 className="btn btn-secondary btn-sm"
@@ -183,6 +185,11 @@ export const PublicVerificationModal: React.FC = () => {
               >
                 <Download size={14} /> Unduh PDF Resmi
               </button>
+            </div>
+          )}
+          {matched && !user && (
+            <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right' }}>
+              Verifikasi publik — unduhan dokumen hanya untuk staf yang login
             </div>
           )}
         </div>

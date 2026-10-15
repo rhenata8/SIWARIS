@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, ShieldCheck } from 'lucide-react';
+import { FolderArchive, FileText, Download, Eye, QrCode, CloudUpload, ShieldCheck, FileCheck2, FileX2 } from 'lucide-react';
+import { convexClient, isConvexEnabled } from '../services/convex';
+import { api } from '../../convex/_generated/api';
 
 export const ArsipDigitalPage: React.FC = () => {
   const { archives, setPreviewDocArchive, setQrModalArchive, setIsAddModalOpen } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const filtered = archives.filter(
     (x) =>
@@ -12,6 +15,36 @@ export const ArsipDigitalPage: React.FC = () => {
       x.namaPewaris.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (x.fileName && x.fileName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Download the ORIGINAL uploaded file (from Convex File Storage)
+  const handleDownloadOriginal = async (x: (typeof archives)[number]) => {
+    if (!x.storageId || !x._id || x._id.startsWith('temp-')) return;
+    try {
+      setDownloadingId(x._id);
+      let url: string | null = x.fileUrl || null;
+      if (convexClient && isConvexEnabled) {
+        const fresh: any = await convexClient.query(api.skw.getFileUrl, {
+          archiveId: x._id as any,
+        });
+        if (fresh) url = fresh;
+      }
+      if (!url) {
+        alert('Berkas asli tidak dapat ditemukan di penyimpanan.');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = x.fileName || `${x.idArsip}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error(e);
+      alert('Gagal mengunduh berkas asli.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -38,7 +71,7 @@ export const ArsipDigitalPage: React.FC = () => {
                 <th>Nama Dokumen</th>
                 <th>ID Arsip</th>
                 <th>Pewaris / Pemohon</th>
-                <th>Jenis Format</th>
+                <th>Berkas Asli</th>
                 <th>Ukuran</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Aksi</th>
@@ -79,9 +112,17 @@ export const ArsipDigitalPage: React.FC = () => {
                     <div style={{ fontSize: 11, color: '#64748b' }}>{x.nomorSKW}</div>
                   </td>
                   <td>
-                    <span className="badge badge-neutral">PDF / Scan Digital</span>
+                    {x.storageId ? (
+                      <span className="badge badge-success">
+                        <FileCheck2 size={12} /> Tersimpan
+                      </span>
+                    ) : (
+                      <span className="badge badge-neutral">
+                        <FileX2 size={12} /> Belum diunggah
+                      </span>
+                    )}
                   </td>
-                  <td style={{ color: '#64748b' }}>{x.fileSize || '1.2 MB'}</td>
+                  <td style={{ color: '#64748b' }}>{x.fileSize || '—'}</td>
                   <td>
                     <span
                       className={`badge ${
@@ -93,12 +134,23 @@ export const ArsipDigitalPage: React.FC = () => {
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', gap: 6 }}>
+                      {x.storageId && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDownloadOriginal(x)}
+                          title="Unduh berkas asli yang diunggah operator"
+                          disabled={downloadingId === x._id}
+                        >
+                          <Download size={13} />
+                          {downloadingId === x._id ? 'Mengunduh...' : 'Unduh Asli'}
+                        </button>
+                      )}
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => setPreviewDocArchive(x)}
                         title="Buka Pratinjau Dokumen"
                       >
-                        <Eye size={13} /> Buka Berkas
+                        <Eye size={13} /> Pratinjau
                       </button>
                       <button
                         className="btn btn-subtle btn-sm"
