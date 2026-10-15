@@ -1,81 +1,163 @@
 # SIWARIS (Sistem Informasi Arsip Surat Keterangan Waris)
 ### Kelurahan Sumbertaman, Kecamatan Wonoasih, Kota Probolinggo
 
-Aplikasi dashboard modern untuk pengelolaan, pencatatan, dan verifikasi arsip digital Surat Keterangan Waris (SKW) dengan antarmuka yang bersih, elegan, dan profesional bernuansa biru modern (*government-grade blue aesthetic*), didukung oleh **Convex Backend & Database** serta siap di-deploy langsung di **Vercel**.
+[![Deployment Status](https://img.shields.io/badge/Deployment-Live%20on%20Vercel-brightgreen)](https://siwaris-three.vercel.app/)
+[![Database](https://img.shields.io/badge/Database-Convex%20Cloud-blue)](https://convex.dev/)
+[![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-blueviolet)](https://react.dev/)
+[![Integrity](https://img.shields.io/badge/Tests-11%2F11%20Passed-success)](https://github.com/rhenata8/SIWARIS)
+
+SIWARIS adalah aplikasi web modern dan sistem informasi pengarsipan digital Surat Keterangan Waris (SKW) resmi untuk **Kelurahan Sumbertaman, Kecamatan Wonoasih, Kota Probolinggo**. 
+
+Sistem ini didesain dengan standar antarmuka pemerintahan modern (*government-grade blue aesthetic*), arsitektur *serverless real-time backend* didukung oleh **Convex Database & Cloud Functions**, dan telah terintegrasi untuk *continuous deployment* melalui **Vercel**.
 
 ---
 
-## 🌟 Fitur Utama (Sesuai Rancangan Stakeholder & Disempurnakan)
+## 🌟 Fitur Utama
 
-1. **Dashboard Eksekutif**:
-   - 4 Kartu KPI: Total SKW (128), Pewaris (128), Ahli Waris (367), dan Penerbitan Berjalan 2026.
-   - Pencarian cepat terintegrasi dengan filter instan.
-   - Tabel 5 arsip terbaru dengan status dan akses langsung ke detail & QR.
-2. **Data Surat Keterangan Waris (SKW)**:
-   - Pencatatan surat lengkap: Nomor SKW (contoh: `470/128/SKW/2026`), tanggal terbit, nama & NIK pewaris, tanggal meninggal, serta status verifikasi.
-   - Modal interaktif **Tambah SKW Baru** dengan pembuat daftar ahli waris dinamis (tambah/hapus baris, relasi keluarga: Istri, Suami, Anak Kandung, Cucu, dll.) serta simulasi upload berkas scan.
-   - Filter tabel berdasarkan status (*Terverifikasi*, *Tersimpan*, *Diproses*).
-3. **Data Pewaris & Ahli Waris**:
-   - Tampilan silsilah dan relasi hubungan keluarga setiap pewaris.
-   - Fitur keamanan privasi NIK (*Masking / Unmasking NIK*).
-4. **Arsip Digital & Dokumen**:
-   - Pengarsipan berkas digital (PDF scan & salinan resmi).
-   - Penampil dokumen (*Document Preview Viewer*) dengan cap watermark resmi *"ARSIP RESMI KELURAHAN SUMBERTAMAN"*, kontrol zoom, dan opsi unduh berkas.
-5. **Pencarian & Pelacakan Arsip**:
-   - Pencarian *real-time* multi-parameter (Nama Pewaris, NIK, No SKW, ID Arsip).
-   - Filter berdasarkan tahun penerbitan (2024, 2025, 2026).
-6. **Laporan & Statistik**:
-   - Rekapitulasi perbandingan tahunan (2024, 2025, 2026).
-   - Grafik batang visual (*CSS Animated Progress Bars*).
-   - Fitur **Export Excel / CSV** (dengan format UTF-8 BOM yang langsung rapi di Microsoft Excel).
-   - Fitur **Cetak Laporan Resmi** (`window.print()` dengan stylesheet khusus cetak).
-7. **Format Surat Resmi (Kop Surat Kelurahan)**:
-   - Format cetak surat resmi lengkap dengan Kop Surat Pemerintah Kota Probolinggo, Kecamatan Wonoasih, Kelurahan Sumbertaman, garis ganda resmi, dan tanda tangan elektronik Lurah.
-8. **QR Code Verifikasi**:
-   - Generator QR Code digital untuk validasi keaslian surat fisik/digital oleh instansi (Perbankan, BPN, Notaris, Pengadilan Agama).
-   - Opsi unduh QR Code berformat PNG resolusi tinggi.
-9. **Manajemen Pengguna**:
-   - Pengaturan akun staf operator pelayanan, sekretaris kelurahan, dan Lurah Sumbertaman.
-   - Tambah staf baru dan aktifasi/nonaktifkan akun.
+### 1. Dashboard Eksekutif & Statistik Real-Time
+- **Metrik KPI Akurat**: Menghitung secara otomatis Total SKW terbit, Pewaris unik, total Ahli Waris, dan total SKW tahun berjalan langsung dari database Convex.
+- **Pencarian Cepat**: Pelacakan instan di header berdasarkan nama pewaris, NIK, nomor SKW, maupun ID arsip.
+- **Tabel 5 Arsip Terbaru**: Akses cepat ke berkas yang baru diterbitkan beserta status verifikasinya.
+
+### 2. Pengelolaan Data Surat Keterangan Waris (SKW)
+- **Pencatatan Surat Lengkap**: Nomor SKW resmi (contoh: `500.17.4.1/0759.PE/425.503.6/2026`), tanggal permohonan, tanggal meninggal dunia, data pewaris, dan status berkas (*Terverifikasi*, *Tersimpan*, *Diproses*).
+- **Daftar Ahli Waris Dinamis**: Input relasi keluarga fleksibel (Istri, Suami, Anak Kandung, Cucu, dsb.) dengan validasi minimal 1 ahli waris.
+- **Pencegahan Human Error & Duplikasi Form**: Modal form dilengkapi pembersihan state (*auto-reset*) saat ditutup atau dibuka kembali, mencegah tertinggalnya data lama.
+
+### 3. Keamanan Data & Validasi Multi-Lapis
+- **Atomic ID Generation Server-Side**: Sequence ID arsip (`SW-SBT-YYYY-XXXX`) di-generate secara atomik di server Convex, mengeliminasi risiko *race condition* jika ada beberapa operator menginput bersamaan dari tab/perangkat berbeda.
+- **Validasi Keunikan Nomor SKW**: Sistem menolak input nomor SKW ganda baik di sisi antarmuka maupun level mutasi basis data.
+- **Proteksi Privasi NIK**: Fitur *masking/unmasking* NIK untuk melindungi data kependudukan warga.
+
+### 4. Format Cetak Resmi & TTE (Kop Kelurahan)
+- Format surat standar resmi berdasar regulasi Pemerintah Kota Probolinggo dengan Kop Surat dinas lengkap, garis ganda resmi, dan stempel digital.
+- **QR Code Validasi**: Mengenerate QR Code unik untuk setiap surat fisik.
+- **Halaman Verifikasi Publik** (`/validasi/:idArsip`): Instansi eksternal (Perbankan, BPN, Notaris, Pengadilan Agama) dapat memindai QR Code untuk memeriksa keaslian dan status arsip secara langsung.
+
+### 5. Arsip Digital & Pratinjau Dokumen
+- Penampil dokumen (*Document Preview Viewer*) dengan kontrol zoom in/out, rotasi, watermark dinamis *"ARSIP RESMI KELURAHAN SUMBERTAMAN"*, serta opsi unduh PDF.
+
+### 6. Laporan, Rekapitulasi, & Ekspor
+- Grafik perbandingan volume arsip per tahun (2024, 2025, 2026).
+- **Ekspor Excel / CSV**: Kompatibel dengan Microsoft Excel (UTF-8 BOM encoding).
+- **Cetak Laporan**: Template cetak bersih via tombol cetak browser teroptimasi.
+
+### 7. Manajemen Pengguna & Hak Akses
+- Pengaturan akun staf operator pelayanan, sekretaris kelurahan, dan Lurah Sumbertaman.
 
 ---
 
 ## 🛠️ Arsitektur Teknologi
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Desain & Styling**: Vanilla CSS Modern Design System (Palette: Royal Blue, Slate, Sapphire, Sky Blue, Glassmorphism, Responsive Mobile & Desktop, Micro-animations)
-- **Ikon**: Lucide React
-- **QR Code**: QRCode generator
-- **Backend & Database**: **Convex** (`convex.dev`) — real-time queries, mutations, indexes, cloud file storage & local backend support
-- **Hosting**: **Vercel** (`vercel.json` SPA routing support)
+| Komponen | Teknologi | Keterangan |
+|---|---|---|
+| **Frontend Framework** | React 18, TypeScript, Vite 6 | SPA responsif berkinerja tinggi |
+| **Styling** | Vanilla CSS Design System | Modern government blue, glassmorphism, micro-animations |
+| **Ikon** | Lucide React | Ikon modern dan konsisten |
+| **QR Code & PDF** | `qrcode`, `jspdf`, `html2canvas` | Pembuatan QR verifikasi & cetak dokumen |
+| **Backend & Database** | **Convex** (`convex.dev`) | Database reaktif, transaksi atomik, serverless functions |
+| **Hosting & CI/CD** | **Vercel** + GitHub Integration | Otomatisasi deploy saat commit ke branch `main` |
 
 ---
 
-## 🚀 Cara Menjalankan Secara Lokal
+## 📁 Struktur Direktori
 
-### 1. Jalankan Frontend
+```text
+SIWARIS/
+├── convex/                          # Skema & Backend Cloud Functions (Convex)
+│   ├── _generated/                  # Kode binding otomatis Convex
+│   ├── schema.ts                    # Skema tabel 'archives' & 'users' beserta index
+│   ├── skw.ts                       # Mutasi, Query, Atomic ID Generator, Dedup, Reassign
+│   └── users.ts                     # Autentikasi dan manajemen pengguna
+├── public/                          # Aset statis & logo instansi
+├── scripts/                         # Script otomasi, tes integritas, dan build
+│   ├── apply-dedup-and-verify.cjs   # Script perapian dan verifikasi ID arsip
+│   ├── audit-all-duplicates.cjs     # Audit duplikasi Nomor SKW, Pewaris, File
+│   ├── build.js                     # Script build untuk Vercel (Convex + Vite)
+│   ├── check-all-records.cjs        # Timeline inspeksi entri data
+│   └── test-dedup-and-integrity.cjs # Suite pengujian integritas 11 skenario
+├── src/
+│   ├── components/                  # Komponen UI modular (Modal, Header, Sidebar, Preview)
+│   ├── context/                     # AppContext (State management & Convex client wrapper)
+│   ├── pages/                       # Halaman tampilan aplikasi
+│   ├── types/                       # Definisi tipe TypeScript
+│   ├── App.tsx                      # Root component & routing
+│   └── main.tsx                     # Entry point React
+├── index.html                       # HTML Template
+├── package.json                     # Konfigurasi dependensi dan scripts
+└── vercel.json                      # Konfigurasi SPA rewrite untuk Vercel
+```
+
+---
+
+## 🚀 Panduan Menjalankan Secara Lokal
+
+### Prasyarat
+- Node.js versi 18 atau lebih baru
+- NPM atau PNPM
+
+### 1. Kloning Repository
+```bash
+git clone https://github.com/rhenata8/SIWARIS.git
+cd SIWARIS
+```
+
+### 2. Install Dependensi
 ```bash
 npm install
+```
+
+### 3. Konfigurasi Environment Variables
+Buat berkas `.env.local` di direktori root:
+```env
+VITE_CONVEX_URL=https://giddy-mule-928.convex.cloud
+```
+
+### 4. Jalankan Aplikasi
+```bash
 npm run dev
 ```
 Buka peramban di: `http://localhost:5173/`
 
-### 2. Jalankan Backend Convex
+---
+
+## 🧪 Pengujian Integritas & Audit Data
+
+Aplikasi dilengkapi suite pengujian otomatis untuk memvalidasi keutuhan data dan menguji ketahanan terhadap *race condition*:
+
 ```bash
-npx convex dev
+# Menjalankan 11 pengujian integritas (Deduplikasi, Reassign ID, Concurrent Insert, NomorSKW uniqueness)
+npm run test:integrity
+
+# Menjalankan audit menyeluruh terhadap data duplikat
+npm run audit:duplicates
 ```
-Backend Convex akan otomatis mengaktifkan server backend lokal (`http://127.0.0.1:3210`) atau menghubungkan ke cloud Convex Anda.
+
+Hasil pengujian otomatis:
+- ✅ **Initial State Analysis**: Memeriksa seluruh baris data.
+- ✅ **Deduplication Mutation**: Menghapus duplikasi arsip tanpa data loss.
+- ✅ **Sequential ID Verification**: Memastikan format `SW-SBT-YYYY-XXXX` urut dari 0001 tanpa celah.
+- ✅ **Concurrent Race Condition Test**: Mensimulasikan 5 input bersamaan untuk membuktikan keunikan ID atomik.
+- ✅ **Nomor SKW Uniqueness**: Memvalidasi bahwa setiap nomor surat unik di database.
+- ✅ **Stats Synchronous Check**: Memvalidasi kecocokan total SKW & ahli waris di dashboard.
 
 ---
 
 ## ☁️ Panduan Deploy ke Vercel
 
-1. Push repository ini ke GitHub / GitLab.
-2. Buka dashboard [Vercel](https://vercel.com/) dan impor repository ini.
-3. Konfigurasi build setting di Vercel:
-   - **Framework Preset**: Vite
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. Tambahkan **Environment Variable** di project settings Vercel:
-   - `VITE_CONVEX_URL`: URL deployment Convex Anda (contoh: `https://xxxx.convex.cloud`)
-5. Klik **Deploy**! Aplikasi SIWARIS akan langsung aktif secara global.
+1. Push repository ke GitHub:
+   ```bash
+   git push origin main
+   ```
+2. Hubungkan repository ke project di [Vercel](https://vercel.com/).
+3. Atur **Environment Variables** di dashboard Vercel (`Project Settings > Environment Variables`):
+   - `VITE_CONVEX_URL`: URL deployment Convex produksi (`https://giddy-mule-928.convex.cloud`)
+   - `CONVEX_DEPLOY_KEY`: Production deploy key Convex Anda (opsional, untuk auto-deploy fungsi Convex saat build).
+4. Vercel akan otomatis menjalankan build melalui script `scripts/build.js` dan mempublikasikan versi terbaru.
+
+---
+
+## 🏛️ Lisensi & Hak Cipta
+
+Dikembangkan untuk **Pemerintah Kelurahan Sumbertaman, Kecamatan Wonoasih, Kota Probolinggo**.  
+Seluruh hak cipta dan kepemilikan data dilindungi.

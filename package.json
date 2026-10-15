@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "node scripts/build.js",
     "build:app": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:integrity": "node scripts/test-dedup-and-integrity.cjs",
+    "audit:duplicates": "node scripts/audit-all-duplicates.cjs"
   },
   "dependencies": {
     "convex": "^1.17.4",
