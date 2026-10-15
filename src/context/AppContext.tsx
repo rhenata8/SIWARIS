@@ -153,6 +153,7 @@ function mapConvexArchive(a: any): ArchiveSKW {
     alamat: a.alamat,
     status: a.status,
     catatan: a.catatan,
+    storageId: a.storageId,
     fileName: a.fileName,
     fileUrl: a.fileUrl,
     fileSize: a.fileSize,
